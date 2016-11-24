@@ -17,6 +17,7 @@ import Base.size
 import Base.getindex
 import Base.sub2ind
 import Base.ind2sub
+import Base.dot
 
 #################################################################
 # Abstract types, type aliases, and immutables
@@ -329,9 +330,6 @@ ptrace(s::QSpace, n::Int, o::AbstractArray) = ptrace(s,n,subview(s,o))
 # Hilbert-Schmidt inner product
 ###
 dot(a::QOp, b::QOp) = trace(a' * b)
-dot(a::QKet, b::QKet) = first(a' * b)
-⋅(a::QOp, b::QOp) = dot(a,b)
-⋅(a::QKet, b::QKet) = dot(a,b)
 
 ###
 # Define a Bra as a dual vector
