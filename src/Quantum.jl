@@ -481,7 +481,7 @@ diss(a) = ρ -> let at=a'; a * ρ * at - acomm(at*a, ρ)/2 end
 inn(a)  = ρ -> let at=a'; a * ρ + ρ * at - trace((a + at)*ρ)*ρ end
 
 expect(ρ, op) = trace(ρ * op) / trace(ρ)
-expectvec(ψ, op) = (ψ' * op * ψ) / (ψ' * ψ)
+expectvec(ψ, op) = first((ψ' * op * ψ) / (ψ' * ψ))
 weakvalue(ρi, ρf, op) = trace(ρf * op * ρi) / trace(ρf * ρi)
-weakvaluevec(ψi, ψf, op) = (ψf' * op * ψi) / (ψf' * ψi)
+weakvaluevec(ψi, ψf, op) = first((ψf' * op * ψi) / (ψf' * ψi))
 
