@@ -1,5 +1,9 @@
 # QuantumBayesian
 
+[![Build Status](https://travis-ci.org/justindressel/QuantumBayesian.svg?branch=master)](https://travis-ci.org/justindressel/QuantumBayesian)
+[![codecov](https://codecov.io/gh/justindressel/QuantumBayesian/branch/master/graph/badge.svg)](https://codecov.io/gh/justindressel/QuantumBayesian)
+
+
 Julia package for simulating quantum evolution efficiently, including the quantum Bayesian approach to stochastic measurement update and continuous readout.
 
 # Examples
@@ -63,4 +67,4 @@ plot(out[1],out[3])
 plot(out[1],out[4])
 ```
 
-![Example Output](tmp/example_lindblad.png)
+![Example Output](img/example_lindblad.png)
