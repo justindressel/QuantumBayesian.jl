@@ -1,37 +1,9 @@
 ### Quantum.jl
-# 
-#  Define efficient (sparse) representations for Quantum 
-#  objects that keep track of tensor product factors properly
-#  for the purposes of partial traces 
-#
+# Core functionality for setting up quantum Hilbert spaces
+# of operators, handling tensor products, and computing 
+# partial traces 
 ###
 
-import Base.product
-
-# Imported solely for method overloading purposes
-import Base.call
-import Base.show
-import Base.showarray
-import Base.length
-import Base.size
-import Base.getindex
-import Base.sub2ind
-import Base.ind2sub
-import Base.dot
-
-#################################################################
-# Abstract types, type aliases, and immutables
-###
-abstract QObj <: Any
-
-# Note implementation is light-weight, using mostly type aliases
-# for the features in Base that do all the real work
-typealias QComp Complex128
-typealias QInd Int
-typealias QName AbstractString
-typealias QOp{T,I} SparseMatrixCSC{T, I}
-typealias QKet{T,I} SparseVector{T, I}
-typealias QOps{T,I} Dict{AbstractString, QOp{T,I}}
 
 ###
 # Quantum Hilbert Space Factor
@@ -41,11 +13,14 @@ typealias QOps{T,I} Dict{AbstractString, QOp{T,I}}
 
 Single Hilbert space factor for a quantum space.
 
-**Fields:**
+### Fields:
   - dim : Hilbert space dimension
   - name : String naming the factor for clarity
   - ops  : Dict of named operators belonging to space
 
+### Bases:
+  - Indexing as an array with [] indexes from 1
+  - Indexing as a function with () indexes from 0
 """
 immutable QFactor <: QObj
     dim  :: Int
@@ -65,8 +40,8 @@ size(s :: QFactor) = s.dim
 length(s :: QFactor) = s.dim
 name(s :: QFactor) = s.name
 
-# Overload function call 
-(q::QFactor)(arg) = q.ops[arg]
+# Overload function call of string to get operator
+(q::QFactor)(arg::AbstractString) = q.ops[arg]
 
 ###
 # Quantum Tensor Product of Hilbert Spaces
@@ -78,10 +53,13 @@ name(s :: QFactor) = s.name
 
 Tensor product containing quantum Hilbert space factors.
 
-**Fields:**
-  - factors : Hilbert space factors
-  - ops  : Dict of named operators belonging to space
+### Fields:
+  - factors : Vector of Hilbert space factors
+  - ops     : Dict of named operators belonging to space
 
+### Bases:
+  - Indexing as an array with [] indexes from 1
+  - Indexing as a function with () indexes from 0
 """
 immutable QSpace <: QObj
     factors :: Vector{QFactor}
@@ -98,7 +76,7 @@ length(s :: QSpace) = prod(size(s))
 name(s :: QSpace) = join(map(name, factors(s)), " ⊗ ")
 
 # Overload function call 
-(q::QSpace)(arg) = q.ops[arg]
+(q::QSpace)(arg::AbstractString) = q.ops[arg]
 
 
 ###
@@ -131,7 +109,7 @@ t = subview(sysa ⊗ sysb, a ⊗ b)
 t[i,k,j,l] == a[i,j] * b[k,l]  # True
 ```
 
-**Fields:**
+### Fields:
   - data : reshaped array with raw subsystem indices
   - perm : permutation array to fix order of subsystem indices
 """
@@ -222,7 +200,10 @@ subview(s::QFactor, op::AbstractArray) = subview(QSpace(s),op)
     ⊗(q::AbstractArray, s::AbstractArray)
     ⊗(q::QObj, s::QObj)
 
-Tensor product - equivalent to `kron`
+Tensor product.
+
+  - equivalent to `kron` for arrays
+  - constructs tensor-product QSpaces from QFactors
 
 """
 @inline ⊗(q::AbstractArray...) = kron(q...)
@@ -252,7 +233,7 @@ Lift an operator of a single factor into a joint space,
 assuming that the factor is at position `i` of the tensor
 product.
 
-**Returns:**
+### Returns:
   - QOp : result of tensor product with appropriate identities
 """
 @inline function lift(q::QSpace, i::Int, o::QOp)
@@ -266,19 +247,21 @@ end
 ###
 
 """
-    ptrace(s::QObj, n::Int, o::QView)
-    ptrace(s::QObj, n::Int, o::QOp)
+    ptrace(s::QObj, o::QView, n::Int...)
+    ptrace(s::QObj, o::QOp, n::Int...)
 
-Partial trace of o, over subsystem in position n, inside quantum space s.
+Partial trace of o, over subsystems in positions n, inside quantum space s.
 
-**Returns:**  (snew, onew)
+### Returns:
+  - (snew, onew)
   - snew : reduced system space
   - onew : reduced operator 
 
 """
-ptrace(s::QFactor, n::Int, v::QView) = trace(v)
-ptrace(s::QFactor, n::Int, v::QOp) = trace(v)
-@inline function ptrace(s::QSpace, n::Int, v::QView)
+@inline ptrace(s::QFactor, v::QView, n::Int...) = trace(unview(v))
+@inline ptrace(s::QFactor, v::QOp, n::Int...) = trace(v)
+@inline ptrace(s::QSpace, o::AbstractArray, n::Int...) = ptrace(s,subview(s,o),n...)
+@inline function ptrace(s::QSpace, v::QView, n::Int)
     # Check that valid subsystem was specified
     dim = size(v)
     nsys = Int(length(dim)/2)
@@ -323,7 +306,12 @@ ptrace(s::QFactor, n::Int, v::QOp) = trace(v)
     # Return both the new space, and the partially traced matrix
     newsys, m
 end
-ptrace(s::QSpace, n::Int, o::AbstractArray) = ptrace(s,n,subview(s,o))
+@inline function ptrace(s::QSpace, v::QView, n::Int...)
+    isempty(n) && return trace(unview(v))
+    n = sort([n...]) 
+    s2, v2 = ptrace(s,v,last(n))
+    ptrace(s2, v2, n[1:end-1]...)
+end
 
 
 ###
@@ -334,6 +322,13 @@ dot(a::QOp, b::QOp) = trace(a' * b)
 ###
 # Define a Bra as a dual vector
 ###
+"""
+    bra(a::QKet)
+
+Construct a dual-vector (one-form) from a ket vector `a`.
+
+Such a one-form has type: (b::QKet) -> dot(a,b)
+"""
 bra(a::QKet) = (b::QKet) -> dot(a,b)
 
 
@@ -347,9 +342,10 @@ bra(a::QKet) = (b::QKet) -> dot(a,b)
 """
     osc(n::Int[, name="Osc(n)"::QName])
 
-Create Harmonic oscillator in Fock basis with `n` levels.
+Create harmonic oscillator in Fock basis with `n` levels.
 
-**Default ops:**
+### Default ops for QFactor:
+  - "i" : identity operator
   - "n" : number operator
   - "d" : lowering operator
   - "u" : raising operator
@@ -366,7 +362,7 @@ function osc(levels::Int, name=""::QName)
     s.ops["u"] = s("d")'
     s.ops["n"] = let l=1:levels; sparse(l,l,map(QComp,0:(levels - 1))) end
     s.ops["x"] = s("d") + s("u")
-    s.ops["y"] = (s("u") - s("d")) .* im
+    s.ops["y"] = (s("d") - s("u")) .* im
     s
 end
 
@@ -378,7 +374,19 @@ end
 
 Create qubit in computational basis.
 
-**Default ops:**
+**Note:** Rows are permuted from usual matrix representation. 
+This is so the 0 state can represent the ground state of energy 
+when constructing a qubit Hamiltonian.
+
+**Example:**
+```julia
+q = qubit()
+q("z") * groundvec(q) == sparse([QComp(-1); 0])  # True
+H = (ħ*ωq/2)*q("z") # Correct energy structure
+```
+
+### Default ops for QFactor:
+  - "i" : identity operator
   - "d" : lowering operator (``σ_-``)
   - "u" : raising operator  (``σ_+``)
   - "x" : Pauli x operator  (``σ_x``)
@@ -426,6 +434,10 @@ Base.@propagate_inbounds Base.getindex(A::QObj, i::Int, j::Int) =
     end
 end
 
+# Overload function calls to match indexing from 0
+@inline (q::QFactor)(i::Int...) = q[(1 .+ [i...])...]
+@inline (q::QSpace)(i::Int...) = q[(1 .+ [i...])...]
+
 ###
 # Ground states
 ###
@@ -445,9 +457,9 @@ Ground state density matrix of quantum space `o`.
 ground(o::QObj) = o[1,1]
 
 """
-    projector(ψ::QOp)
+    projector(ψ::QKet)
 
-Convert vector ψ into a projection operator.
+Convert ket vector ψ into a projection operator.
 """
 function projector(ψ::QKet)
     first(size(ψ)) == 1 && error("Not a column vector.")
@@ -456,16 +468,26 @@ function projector(ψ::QKet)
 end
 transition(ψl,ψr) = sparse(ψl * ψr') / (vecnorm(ψl)*vecnorm(ψr))
 
+"""
+    coherentvec(o::QObj, α::Number)::QKet
+
+Create a coherent state ket vector with amplitude `α`.
+"""
 # Generate coherent state α in space o
-function coherentvec(o::QObj, α)::QKet
+function coherentvec(o::QObj, α::Number)::QKet
   m = length(o)
   nbar = abs2(α)
   @assert (nbar + 3*sqrt(nbar) <= m) "Mean n of $nbar too large for max n of $m."
   e = exp(-nbar/2)
-  cv = map(k -> e*α^k/sqrt(gamma(k+1) + 0.*im), 0:(m - 1))
+  cv = map(k -> QComp(e*α^k/sqrt(gamma(k+1))), 0:(m - 1))
   sparsevec(cv / norm(cv))
 end
 
+"""
+    coherent(o::QObj, α::QComp)::QKet
+
+Create a coherent state projection operator with amplitude `α`.
+"""
 coherent(o::QObj, α) = projector(coherentvec(o, α))
 
 
@@ -473,15 +495,95 @@ coherent(o::QObj, α) = projector(coherentvec(o, α))
 # Convenience matrix operations
 ##
 
-comm(a, b)  = a * b - b * a
+"""
+    comm(a, b) = a ⊖ b
+
+Commutator of operators `a` and `b`.
+
+### Returns:
+  - Anti-Hermitian operator: a * b' - b * a'
+"""
+comm(a, b)  = a * b' - b * a'
 ⊖ = comm
-acomm(a, b) = a * b + b * a
+
+"""
+    acomm(a, b) = a ⊕ b
+
+Anti-commutator of operators `a` and `b`.
+
+### Returns:
+  - Hermitian operator: a * b' + b * a'
+"""
+acomm(a, b) = a * b' + b * a'
 ⊕ = acomm
-diss(a) = ρ -> let at=a'; a * ρ * at - acomm(at*a, ρ)/2 end
-inn(a)  = ρ -> let at=a'; a * ρ + ρ * at - trace((a + at)*ρ)*ρ end
 
+"""
+    sand(a, b)
+
+Sandwich `b` operator with `a`.
+
+### Returns:
+  - Operator: a * b * a'
+"""
+sand(a, b) = a * b * a'
+
+"""
+    diss(a)
+
+Dissipation function for `a` action.
+
+### Returns:
+  - Function: ρ -> sand(a, ρ) - acomm(at*a, ρ)/2
+"""
+diss(a) = ρ -> sand(a, ρ) - acomm(a'*a, ρ)/2
+
+"""
+    inn(a)
+
+Innovation function for `a` action.
+
+### Returns:
+  - Function: ρ -> acomm(a, ρ) - trace(acomm(a, ρ))*ρ
+"""
+inn(a)  = ρ -> let ac = acomm(a, ρ);  ac - trace(ac)*ρ end
+
+"""
+    expect(ρ, op)
+
+Expectation value of `op` in state `ρ`.
+
+### Returns:
+  - trace(ρ * op) / trace(ρ)
+"""
 expect(ρ, op) = trace(ρ * op) / trace(ρ)
-expectvec(ψ, op) = first((ψ' * op * ψ) / (ψ' * ψ))
-weakvalue(ρi, ρf, op) = trace(ρf * op * ρi) / trace(ρf * ρi)
-weakvaluevec(ψi, ψf, op) = first((ψf' * op * ψi) / (ψf' * ψi))
 
+"""
+    expectvec(ψ, op)
+
+Expectation value of `op` in state vector `ψ`.
+
+### Returns:
+  - dot(ψ, op * ψ) / dot(ψ, ψ)
+"""
+expectvec(ψ, op) = dot(ψ, op * ψ) / dot(ψ, ψ)
+
+"""
+    weakvalue(ρi, ρf, op)
+
+Generalized weak value of `op` with initial state `ρi`
+and final state `ρf`.
+
+### Returns:
+  - trace(ρf * op * ρi) / trace(ρf * ρi)
+"""
+weakvalue(ρi, ρf, op) = trace(ρf * op * ρi) / trace(ρf * ρi)
+
+"""
+    weakvaluevec(ψi, ψf, op)
+
+Weak value of `op` with initial state `ψi` and final state `ψf`.
+
+### Returns:
+  - dot(ψf, op * ψi) / dot(ψf, ψi)
+"""
+weakvaluevec(ψi, ψf, op) = dot(ψf, op * ψi) / dot(ψf, ψi)
