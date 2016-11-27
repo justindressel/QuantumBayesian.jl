@@ -4,7 +4,7 @@ module QuantumBayesian
 #################################
 # Package dependences and imports
 #
-# Imported to use (not seen otherwise)
+using Distributions
 import Base.product
 
 # Imported solely for method overloading purposes

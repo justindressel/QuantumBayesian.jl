@@ -1,8 +1,11 @@
 using QuantumBayesian
 using Base.Test
 
-# Fixture definitions for tests
+# Fixtures for tests
+rd, wr = redirect_stdout()
+
 q = qubit();
+
 @test size(q) == 2
 @test length(q) == 2
 @test name(q) == "Qubit"
@@ -24,11 +27,22 @@ s = ⊗(q,q,f)
 @test name(s) == "Qubit ⊗ Qubit ⊗ Foo"
 @test factors(s) == Vector([q,q,f])
 
-t = q ⊗ o ⊗ f ⊗ q
+t = (q ⊗ (o ⊗ f)) ⊗ q
 @test size(t) == (2,5,3,2)
 @test length(t) == 60
 @test name(t) == "Qubit ⊗ Osc(5) ⊗ Foo ⊗ Qubit"
 @test factors(t) == Vector([q,o,f,q])
+
+f2 = QSpace(f)
+f3 = QSpace(3, "Foo")
+@test f2.factors == factors(f2)
+@test f3.factors == factors(f3)
+@test f2.ops["i"] == f2("i")
+@test f3.ops["i"] == f3("i")
+
+show(f2)
+rdout = readavailable(rd)
+@test String(rdout) == "QuantumBayesian.QSpace: Foo\nDims  : (3,)\nOps   : \"i\"\n"
 
 # Test tensor product subview indexing
 a = ["a11" "a12" ; "a21" "a22"];
@@ -36,9 +50,22 @@ b = ["b11" "b12" ; "b21" "b22"];
 c = ["c11" "c12" "c13" ; "c21" "c22" "c23"; "c31" "c32" "c33"];
 abc = ⊗(a,b,c);
 abcv = subview(s, abc);
+# Print tests
+show(abcv)
+rdout = readavailable(rd)
+@test String(rdout) == "QView\n"
+showarray(STDOUT, abcv)
+rdout = readavailable(rd)
+@test String(rdout) == "QView\n"
+showarray(STDOUT, abcv, true)
+rdout = readavailable(rd)
+@test String(rdout) == "QView\n"
+# Index tests
 @test abc[15] ==  abcv[15]
 @test abcv[2,1,3,1,2,1] == a[2,1]*b[1,2]*c[3,1]
 @test abcv.perm == [3,2,1,6,5,4]
+@test length(abcv) == length(abc)
+@test_throws ErrorException subview(s,abcv)
 
 tv = subview(t, t("yxii"))
 @test tv.data.parent == t("yxii")
@@ -62,8 +89,11 @@ e2 = s(0,1,2)
 ev = subview(s, e)
 @test ev[1,2,3] == QComp(1)
 @test e[sub2ind(ev, 1,2,3)] == QComp(1)
+@test_throws ErrorException s[1,2,3,4]
 
 # Test partial traces
+@test ptrace(q, q("i")) == trace(q("i"))
+@test ptrace(q, subview(q, q("i"))) == trace(q("i"))
 @test ptrace(s, s("xii")) == trace(s("xii"))
 @test ptrace(s, subview(s, s("xii"))) == trace(s("xii"))
 pt, pm = ptrace(s, s("xii")./3, 3)
@@ -78,6 +108,11 @@ pt2, pm2 = ptrace(pt, pm./2, 1)
 @test pm2 == f("i")
 @test ptrace(s, s("iii")./4, 1, 2) == (f, f("i"))
 
+# Test lift operations
+@test lift(s, q("x"), 1) == s("xii")
+@test lift(s, q("x"), 2) == s("ixi")
+@test lift(s, f("i"), 3) == s("iii")
+
 # Test qubit relations
 @test comm(q("x"),q("y")) == 2*im*q("z")
 @test comm(q("y"),q("z")) == 2*im*q("x")
@@ -91,8 +126,13 @@ pt2, pm2 = ptrace(pt, pm./2, 1)
 @test acomm(q("x"),q("y")) == spzeros(q.dim,q.dim)
 @test acomm(q("y"),q("z")) == spzeros(q.dim,q.dim)
 @test acomm(q("z"),q("x")) == spzeros(q.dim,q.dim)
+
+# Test bra
 xplus = (q[1] + q[2])/sqrt(2)
 xplus2 = (q(0) + q(1))/sqrt(2)
+@test_approx_eq(bra(xplus)(xplus), dot(xplus,xplus))
+
+# Test expectations and weak values
 @test xplus == xplus2
 yplus = (q[1] + im*q[2])/sqrt(2)
 @test weakvaluevec(xplus, yplus, q("z")) == QComp(-im)
@@ -113,15 +153,38 @@ yplusp = projector(yplus)
 # Test coherent state
 o2 = osc(15)
 v = coherentvec(o2, 1)
-@test abs((v ⋅ v) - 1) < 1e-6
-@test abs(expectvec(v, o2("n")) - 1) < 1e-6
-@test abs(expectvec(v, o2("n")) - weakvaluevec(v, v, o2("n"))) < 1e-6
-@test abs(expectvec(v, o2("d")) - weakvaluevec(v, groundvec(o2), o2("d"))) < 1e-6
-@test abs(weakvaluevec(v, groundvec(o2), o2("n"))) < 1e-6
-vp = projector(v)
-@test abs((vp ⋅ vp) - 1) < 1e-6
-@test abs(expect(vp, o2("n")) - 1) < 1e-6
-@test abs(expect(vp, o2("n")) - weakvalue(vp, vp, o2("n"))) < 1e-6
-@test abs(expect(vp, o2("d")) - weakvalue(vp, ground(o2), o2("d"))) < 1e-6
-@test abs(weakvalue(vp, ground(o2), o2("n"))) < 1e-6
+@test_approx_eq(v ⋅ v, 1)
+@test_approx_eq_eps(expectvec(v, o2("n")), 1, 1e-11)
+@test_approx_eq(expectvec(v, o2("n")), weakvaluevec(v, v, o2("n")))
+@test_approx_eq_eps(expectvec(v, o2("d")), weakvaluevec(v, groundvec(o2), o2("d")), 1e-11)
+@test_approx_eq(weakvaluevec(v, groundvec(o2), o2("n")), 0)
 
+vp = projector(v)
+@test_approx_eq(vp, coherent(o2, 1))
+
+@test_approx_eq(vp ⋅ vp, 1)
+@test_approx_eq_eps(expect(vp, o2("n")), 1, 1e-11)
+@test_approx_eq(expect(vp, o2("n")), weakvalue(vp, vp, o2("n")))
+@test_approx_eq_eps(expect(vp, o2("d")), weakvalue(vp, ground(o2), o2("d")), 1e-11)
+@test_approx_eq(weakvalue(vp, ground(o2), o2("n")), 0)
+
+# Test Hamiltonian increment
+h = ham(1e-2, 0*q("z"))
+@test h(q("x")) == q("x")
+h = ham(π/2, q("x"))
+@test_approx_eq(h(ground(q)), q(1,1))
+
+h = ham(1e-2, 0*q("z"), ket=true)
+@test h(xplus) == xplus
+h = ham(π/2, q("x"), ket=true)
+@test_approx_eq(h(groundvec(q)), -im*q(1))
+
+l = lind(1e-6, 0*q("z"), q("d"))
+@test_approx_eq(l(q(1,1))[2,2], exp(-1e-6))
+
+l = lind_runge(1e-6, 0*q("z"), q("d"))
+@test_approx_eq(l(q(1,1))[2,2], exp(-1e-6))
+
+t = trajectory(ground(q), ham(0.0, q("z")), 1e-6, 0.1, ρ->ρ[1,1])
+@test t[1] == linspace(0.0,0.1,1000)
+@test_approx_eq(t[2][end], QComp(1))

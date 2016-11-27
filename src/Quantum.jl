@@ -227,7 +227,7 @@ end
 ###
 
 """
-    lift(q::QSpace, i::Int, o::QOp)
+    lift(q::QSpace, o::QOp, i::Int)
 
 Lift an operator of a single factor into a joint space, 
 assuming that the factor is at position `i` of the tensor
@@ -236,7 +236,7 @@ product.
 ### Returns:
   - QOp : result of tensor product with appropriate identities
 """
-@inline function lift(q::QSpace, i::Int, o::QOp)
+@inline function lift(q::QSpace, o::QOp, i::Int)
     is = map(f -> f("i"), factors(q))
     splice!(is, i, [o])
     ⊗(is...)
