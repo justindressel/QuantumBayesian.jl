@@ -197,7 +197,7 @@ Convert a square matrix operator into a ket vector in the superoperator space.
 superket(op::QOp) = reshape(op, length(op), 1)
 
 """
-    unsuperket(op::QOp)
+    unsuperket(op::AbstractArray)
 
 Convert a superket back into a square matrix operator.
 """
@@ -351,7 +351,7 @@ end
 ###
 # Hilbert-Schmidt inner product
 ###
-dot(a::QOp, b::QOp) = trace(a' * b)
+dot(a::AbstractArray, b::AbstractArray) = trace(a' * b)
 
 ###
 # Define a Bra as a dual vector

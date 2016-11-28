@@ -61,6 +61,7 @@ export scomm, sacomm, ssand, sdiss
 export expect, expectvec, weakvalue, weakvaluevec 
 # QuantumEvolution
 export ham, lind, lind_runge, trajectory
+export sham, slind 
 ###
 
 end # module
