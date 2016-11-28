@@ -127,23 +127,34 @@ pt2, pm2 = ptrace(pt, pm./2, 1)
 @test acomm(q("y"),q("z")) == spzeros(q.dim,q.dim)
 @test acomm(q("z"),q("x")) == spzeros(q.dim,q.dim)
 
-# Test bra
+# Test superpositions and bra
 xplus = (q[1] + q[2])/sqrt(2)
 xplus2 = (q(0) + q(1))/sqrt(2)
+@test xplus == xplus2
 @test_approx_eq(bra(xplus)(xplus), dot(xplus,xplus))
+yplus = (q[1] + im*q[2])/sqrt(2)
+
+# Test transition operator
+xtoy = transition(yplus, xplus)
+@test_approx_eq(trace(xtoy), dot(xplus, yplus))
 
 # Test expectations and weak values
-@test xplus == xplus2
-yplus = (q[1] + im*q[2])/sqrt(2)
 @test weakvaluevec(xplus, yplus, q("z")) == QComp(-im)
 xplusp = projector(xplus)
 yplusp = projector(yplus)
 @test weakvalue(xplusp, yplusp, q("z")) == QComp(-im)
 
+# Test superoperator
+@test_approx_eq(unsuperket(superopl(o("d")) * superket(o("n"))), o("d") * o("n"))
+@test_approx_eq(unsuperket(superopr(o("d")) * superket(o("n"))), o("n") * o("d"))
+@test_approx_eq(unsuperket(ssand(o("d")) * superket(o("n"))), o("d") * o("n") * o("d")')
+@test_approx_eq(unsuperket(scomm(o("d")) * superket(o("n"))), o("d") * o("n") - o("n") * o("d")')
+
 # Test dissipator definition
-@test diss(q("x"))(q("z")) == q("x") * q("z") * q("x")' - (1/2)*(q("x")'*q("x")*q("z") + q("z")*q("x")'*q("x"))
-@test diss(o("x"))(o("n")) == o("x") * o("n") * o("x")' - (1/2)*(o("x")'*o("x")*o("n") + o("n")*o("x")'*o("x"))
-@test diss(o("y"))(o("n")) == o("y") * o("n") * o("y")' - (1/2)*(o("y")'*o("y")*o("n") + o("n")*o("y")'*o("y"))
+@test_approx_eq(diss(q("x"))(q("z")), q("x") * q("z") * q("x")' - (1/2)*(q("x")'*q("x")*q("z") + q("z")*q("x")'*q("x")))
+@test_approx_eq(diss(o("x"))(o("n")), o("x") * o("n") * o("x")' - (1/2)*(o("x")'*o("x")*o("n") + o("n")*o("x")'*o("x")))
+@test_approx_eq(diss(o("y"))(o("n")), o("y") * o("n") * o("y")' - (1/2)*(o("y")'*o("y")*o("n") + o("n")*o("y")'*o("y")))
+@test_approx_eq(unsuperket(sdiss(o("y")) * superket(o("n"))), o("y") * o("n") * o("y")' - (1/2)*(o("y")'*o("y")*o("n") + o("n")*o("y")'*o("y")))
 
 # Test innovation definition
 @test inn(q("x"))(q("z")) == q("x") * q("z") +  q("z") * q("x")' - trace((q("x") + q("x")')*q("z"))*q("z")

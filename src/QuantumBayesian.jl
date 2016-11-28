@@ -52,10 +52,12 @@ export QObj, QComp, QInd, QName, QOp, QKet, QOps
 export QFactor, QSpace, QView
 export size, length, name, show, showarray, sub2ind, ind2sub, getindex, setindex!
 export factors, unview, subview
+export superket, unsuperket, superopl, superopr
 export ⊗, lift, ptrace, dot, ⋅, bra
 export osc, qubit
 export groundvec, ground, projector, transition, coherentvec, coherent
 export comm, acomm, ⊖, ⊕, sand, diss, inn
+export scomm, sacomm, ssand, sdiss
 export expect, expectvec, weakvalue, weakvaluevec 
 # QuantumEvolution
 export ham, lind, lind_runge, trajectory

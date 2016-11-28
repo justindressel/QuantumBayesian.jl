@@ -189,6 +189,40 @@ abcv = subview(sys, abc);
 end
 subview(s::QFactor, op::AbstractArray) = subview(QSpace(s),op)
 
+"""
+    superket(op::QOp)
+
+Convert a square matrix operator into a ket vector in the superoperator space.
+"""
+superket(op::QOp) = reshape(op, length(op), 1)
+
+"""
+    unsuperket(op::QOp)
+
+Convert a superket back into a square matrix operator.
+"""
+function unsuperket(op::QOp)
+    d = Int(sqrt(length(op)))
+    d^2 == length(op) || error("Not a superket")
+    reshape(op, d, d)
+end
+
+"""
+    superopl(op::QOp)
+
+Convert `op` into a superoperator that performs left multiplication
+by `op`. `superopl(op)*superket(v) == superket(op * v)`
+"""
+superopl(op::QOp) = speye(last(size(op))) ⊗ op
+
+"""
+    superopr(op::QOp)
+
+Convert `op` into a superoperator that performs right multiplication
+by `op`. `superopr(op)*superket(v) == superket(v * op)`
+"""
+superopr(op::QOp) = (op.') ⊗ speye(last(size(op)))
+
 ###################################################
 # Workhorse functions
 ###
@@ -503,8 +537,19 @@ Commutator of operators `a` and `b`.
 ### Returns:
   - Anti-Hermitian operator: a * b' - b * a'
 """
-comm(a, b)  = a * b' - b * a'
+comm(a, b) = a * b' - b * a'
 ⊖ = comm
+
+"""
+    scomm(a)
+
+Superoperator for commutator with operator `a`. 
+Assumes Hermitian superket.
+
+### Returns:
+  - Superoperator: scomm(a) * superket(b) == superket(a * b - b * a')
+"""
+scomm(a) = superopl(a) - superopr(a')
 
 """
     acomm(a, b) = a ⊕ b
@@ -518,6 +563,17 @@ acomm(a, b) = a * b' + b * a'
 ⊕ = acomm
 
 """
+    sacomm(a)
+
+Superoperator for anticommutator with operator `a`. 
+Assumes Hermitian superket.
+
+### Returns:
+  - Superoperator: scomm(a) * superket(b) == superket(a * b + b * a')
+"""
+sacomm(a) = superopl(a) + superopr(a')
+
+"""
     sand(a, b)
 
 Sandwich `b` operator with `a`.
@@ -528,6 +584,16 @@ Sandwich `b` operator with `a`.
 sand(a, b) = a * b * a'
 
 """
+    ssand(a)
+
+Superoperator for sandwich with operator `a`. 
+
+### Returns:
+  - Superoperator: ssand(a) * superket(b) == superket(a * b * a')
+"""
+ssand(a) = superopl(a) * superopr(a')
+
+"""
     diss(a)
 
 Dissipation function for `a` action.
@@ -536,6 +602,16 @@ Dissipation function for `a` action.
   - Function: ρ -> sand(a, ρ) - acomm(at*a, ρ)/2
 """
 diss(a) = ρ -> sand(a, ρ) - acomm(a'*a, ρ)/2
+
+"""
+    sdiss(a)
+
+Dissipation superoperator for `a` action.
+
+### Returns:
+  - ssand(a) - sacomm(at*a)/2
+"""
+sdiss(a) = ssand(a) - sacomm(a'*a)/2
 
 """
     inn(a)
