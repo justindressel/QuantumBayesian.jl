@@ -181,21 +181,21 @@ vp = projector(v)
 
 # Test Hamiltonian increment
 h = ham(1e-2, 0*q("z"))
-@test h(q("x")) == q("x")
+@test_approx_eq(h(0.0, q("x")), q("x"))
 h = ham(π/2, q("x"))
-@test_approx_eq(h(ground(q)), q(1,1))
+@test_approx_eq(h(0.0, ground(q)), q(1,1))
 
 h = ham(1e-2, 0*q("z"), ket=true)
-@test h(xplus) == xplus
+@test_approx_eq(h(0.0, xplus), xplus)
 h = ham(π/2, q("x"), ket=true)
-@test_approx_eq(h(groundvec(q)), -im*q(1))
+@test_approx_eq(h(0.0, groundvec(q)), -im*q(1))
 
 l = lind(1e-6, 0*q("z"), q("d"))
-@test_approx_eq(l(q(1,1))[2,2], exp(-1e-6))
+@test_approx_eq(l(0.0, q(1,1))[2,2], exp(-1e-6))
 
-l = lind_runge(1e-6, 0*q("z"), q("d"))
-@test_approx_eq(l(q(1,1))[2,2], exp(-1e-6))
+l = lind_rk4(1e-6, 0*q("z"), q("d"))
+@test_approx_eq(l(0.0, q(1,1))[2,2], exp(-1e-6))
 
-t = trajectory(ground(q), ham(0.0, q("z")), 1e-6, 0.1, ρ->ρ[1,1])
-@test t[1] == linspace(0.0,0.1,1000)
+t = trajectory(ham(0.0, q("z")), ground(q), (0.0, 0.1), ρ->ρ[1,1], dt=1e-6, points=100, verbose=false)
+@test t[1] == linspace(0.0,0.1,100)
 @test_approx_eq(t[2][end], QComp(1))
