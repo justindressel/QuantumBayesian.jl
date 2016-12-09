@@ -51,6 +51,41 @@ end
     (t::Float64, ρvec) -> sham(dt, H(t))(t, ρvec)
 end
 
+# Runge-Kutta Hamiltonian evolution
+"""
+    ham_rk4(dt::Float64, H::QOp; ket=false)
+
+Return increment function for Hamiltonian evolution generated
+by Hamiltonian `H` over a time step `dt`.
+
+Uses a 4th-order Runge-Kutta integration method to construct the state
+increment from the first-order differential (master) equation.
+
+### Returns:
+  - ket=true  : t::Float64, ψ::QKet -> ψnew
+  - ket=false : t::Float64, ρ::QOp  -> ρnew
+
+"""
+@inline function ham_rk4(dt::Float64, H::Function; ket=false)
+    if ket
+        inc(t::Float64, ψ::QKet)::QKet = - im * H(t) * ψ
+    else
+        inc(t::Float64, ρ::QOp)::QOp = - im * comm(H(t),ρ)
+    end
+    function rinc(t::Float64, ρ)
+        dρ1 = inc(t, ρ)
+        dρ2 = inc(t + dt/2, ρ + dρ1*dt/ 2)
+        dρ3 = inc(t + dt/2, ρ + dρ2*dt/ 2)
+        dρ4 = inc(t + dt, ρ + dρ3*dt)
+        dt*(dρ1 + 2*dρ2 + 2*dρ3 + dρ4)/6
+    end
+    (t::Float64, ρ) -> ρ + rinc(t, ρ)
+end
+@inline function ham_rk4(dt::Float64, H::QOp, alist::QOp...)
+    h(t) = H
+    ham_rk4(dt, h, alist...)
+end
+
 # Jump-nojump Lindblad propagator
 """
     lind(dt::Float64, H::QOp, alist::QOp...)
@@ -83,13 +118,6 @@ and small dt.  [Physical Review A **92**, 052306 (2015)]
     end
     (t::Float64, ρ) -> let ρu = h(t, ρ); no(ρu) + dec(ρu) end
 end
-# @inline function lind(dt::Float64, H::Function, alist::QOp...)
-#     h = ham(dt, H)
-#     const n::QOp = sparse(sqrtm(eye(H(0.0)) - dt * full(mapreduce(a -> a' * a, +, alist))))
-#     no(ρ::QOp)::QOp = n * ρ * n
-#     dec(ρ::QOp)::QOp = mapreduce(a -> a * ρ * a', +, alist) * dt
-#     (t::Float64, ρ) -> let ρu = h(t, ρ); no(ρu) + dec(ρu) end
-# end
 
 # Runge-Kutta Lindblad propagator
 """
