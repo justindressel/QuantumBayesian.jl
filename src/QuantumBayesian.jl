@@ -60,7 +60,7 @@ export comm, acomm, ⊖, ⊕, sand, diss, inn
 export scomm, sacomm, ssand, sdiss
 export expect, expectvec, weakvalue, weakvaluevec 
 # QuantumEvolution
-export ham, lind, lind_rk4, trajectory
+export ham, ham_rk4, lind, lind_rk4, trajectory
 export sham, slind 
 ###
 

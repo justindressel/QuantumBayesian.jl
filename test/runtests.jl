@@ -182,20 +182,52 @@ vp = projector(v)
 # Test Hamiltonian increment
 h = ham(1e-2, 0*q("z"))
 @test_approx_eq(h(0.0, q("x")), q("x"))
+h = ham(1e-2, t->0*q("z"))
+@test_approx_eq(h(0.0, q("x")), q("x"))
 h = ham(π/2, q("x"))
 @test_approx_eq(h(0.0, ground(q)), q(1,1))
-
 h = ham(1e-2, 0*q("z"), ket=true)
 @test_approx_eq(h(0.0, xplus), xplus)
 h = ham(π/2, q("x"), ket=true)
 @test_approx_eq(h(0.0, groundvec(q)), -im*q(1))
 
+# Test superoperator Hamiltonian increment
+h = sham(1e-2, 0*q("z"))
+@test_approx_eq(h(0.0, superket(q("x"))), superket(q("x")))
+h = sham(1e-2, t->0*q("z"))
+@test_approx_eq(h(0.0, superket(q("x"))), superket(q("x")))
+h = sham(π/2, q("x"))
+@test_approx_eq(h(0.0, superket(ground(q))), superket(q(1,1)))
+
+# Test RK4 Hamiltonian increment
+h = ham_rk4(1e-2, 0*q("z"))
+@test_approx_eq(h(0.0, q("x")), q("x"))
+h = ham_rk4(1e-2, t->0*q("z"))
+@test_approx_eq(h(0.0, q("x")), q("x"))
+h = ham_rk4(1e-2, 0*q("z"), ket=true)
+@test_approx_eq(h(0.0, xplus), xplus)
+
+# Test jump/no-jump Lindblad increment
 l = lind(1e-6, 0*q("z"), q("d"))
 @test_approx_eq(l(0.0, q(1,1))[2,2], exp(-1e-6))
 
+# Test RK4 Lindblad increment
 l = lind_rk4(1e-6, 0*q("z"), q("d"))
 @test_approx_eq(l(0.0, q(1,1))[2,2], exp(-1e-6))
 
-t = trajectory(ham(0.0, q("z")), ground(q), (0.0, 0.1), ρ->ρ[1,1], dt=1e-6, points=100, verbose=false)
-@test t[1] == linspace(0.0,0.1,100)
+# Test Superoperator Lindblad increment
+l = slind(1e-6, 0*q("z"), q("d"))
+@test_approx_eq(unsuperket(l(0.0, superket(q(1,1))))[2,2], exp(-1e-6))
+
+# Test trajectory code
+t = trajectory(ham(0.0, q("z")), ground(q), (0.0, 1.0), ρ->ρ[1,1], dt=1e-3, points=100, verbose=false)
+@test t[1] == linspace(0.0,1.0,100)
+@test_approx_eq(t[2][end], QComp(1))
+t = trajectory(ham(1e-4, (2π/4).*q("y")), ground(q), (0.0, 1.0), ρ->ρ[2,2], dt=1e-4, points=1000, verbose=false)
+@test t[1] == linspace(0.0,1.0,1000)
+@test_approx_eq_eps(t[2][end], QComp(1), 1e-4)
+
+# Test trajectory point truncation
+t = trajectory(ham(0.0, q("z")), ground(q), (0.0, 1.0), ρ->ρ[1,1], dt=1e-2, points=1000, verbose=false)
+@test t[1] == linspace(0.0,1.0,99)
 @test_approx_eq(t[2][end], QComp(1))

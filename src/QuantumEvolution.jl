@@ -67,10 +67,9 @@ increment from the first-order differential (master) equation.
 
 """
 @inline function ham_rk4(dt::Float64, H::Function; ket=false)
+    inc(t::Float64, ρ::QOp)::QOp = - im * comm(H(t),ρ)
     if ket
         inc(t::Float64, ψ::QKet)::QKet = - im * H(t) * ψ
-    else
-        inc(t::Float64, ρ::QOp)::QOp = - im * comm(H(t),ρ)
     end
     function rinc(t::Float64, ρ)
         dρ1 = inc(t, ρ)
@@ -81,9 +80,9 @@ increment from the first-order differential (master) equation.
     end
     (t::Float64, ρ) -> ρ + rinc(t, ρ)
 end
-@inline function ham_rk4(dt::Float64, H::QOp, alist::QOp...)
+@inline function ham_rk4(dt::Float64, H::QOp; ket=false)
     h(t) = H
-    ham_rk4(dt, h, alist...)
+    ham_rk4(dt, h, ket=ket)
 end
 
 # Jump-nojump Lindblad propagator
@@ -106,16 +105,10 @@ and small dt.  [Physical Review A **92**, 052306 (2015)]
 @inline function lind(dt::Float64, H, alist::QOp...)
     # Rely on Hamiltonian to specify type of H
     h = ham(dt, H)
-    # Jump-no-jump only if jumps
-    if length(alist) > 0
-        const n::QOp = sparse(sqrtm(eye(first(alist)) - 
-                       dt * full(mapreduce(a -> a' * a, +, alist))))
-        no(ρ::QOp)::QOp = n * ρ * n
-        dec(ρ::QOp)::QOp = mapreduce(a -> a * ρ * a', +, alist) * dt
-    else
-        no(ρ) = ρ
-        dec(ρ) = ρ
-    end
+    const n::QOp = sparse(sqrtm(eye(first(alist)) - 
+                   dt * full(mapreduce(a -> a' * a, +, alist))))
+    no(ρ::QOp)::QOp = n * ρ * n
+    dec(ρ::QOp)::QOp = mapreduce(a -> a * ρ * a', +, alist) * dt
     (t::Float64, ρ) -> let ρu = h(t, ρ); no(ρu) + dec(ρu) end
 end
 
