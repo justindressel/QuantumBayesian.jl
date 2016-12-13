@@ -1,10 +1,18 @@
 __precompile__()
+
+"""
+    module QuantumBayesian
+
+A Julia package for efficient simulation of quantum state evolution.
+"""
 module QuantumBayesian
 
 #################################
 # Package dependences and imports
 #
-using Distributions
+
+#using Distributions  # Minimize depedencies 
+using Interpolations
 import Base.product
 
 # Imported solely for method overloading purposes
@@ -29,6 +37,7 @@ abstract QObj <: Any
 # Define efficient (sparse) representations for Quantum 
 # objects that keep track of tensor product factors properly
 # for the purposes of partial traces 
+typealias Time Float64
 typealias QComp Complex128
 typealias QInd Int
 typealias QName AbstractString
@@ -50,8 +59,8 @@ include("QuantumEvolution.jl")
 export QObj, QComp, QInd, QName, QOp, QKet, QOps
 # Quantum
 export QFactor, QSpace, QView
-export size, length, name, show, showarray, sub2ind, ind2sub, getindex, setindex!
-export factors, unview, subview
+export size, length, show, showarray, sub2ind, ind2sub, getindex, setindex!
+export name, factors, unview, subview
 export superket, unsuperket, superopl, superopr
 export ⊗, lift, ptrace, dot, ⋅, bra
 export osc, qubit
@@ -60,6 +69,7 @@ export comm, acomm, ⊖, ⊕, sand, diss, inn
 export scomm, sacomm, ssand, sdiss
 export expect, expectvec, weakvalue, weakvaluevec 
 # QuantumEvolution
+export Trajectory
 export ham, ham_rk4, lind, lind_rk4, trajectory
 export sham, slind 
 ###

@@ -1,4 +1,26 @@
 ###########################################################
+# Solution type
+#   Enhanced Vector type to store temporal information for
+#   convenience, and auto-interpolate solution temporally
+##
+
+immutable Trajectory{T} <: AbstractVector{T}
+    t :: LinSpace{Time}
+    v :: AbstractVector{T}
+    interpolation 
+    # Input auto-interpolation
+    function Trajectory{T}(t::LinSpace{Time}, v::AbstractVector{T})
+        i = interpolate( (collect(t),), v, Gridded(Constant()) )
+        new(t, v, i)
+    end
+end
+@inline Base.@propagate_inbounds Base.getindex(T::Trajectory, i::Int...) = T.v[i...]
+(T::Trajectory)(t::Time) = T.interpolation[t]
+size(T::Trajectory) = size(T.v)
+length(T::Trajectory) = length(T.v)
+
+
+###########################################################
 # Simple propagators
 ##
 
@@ -169,13 +191,17 @@ end
 end
 
 ###
+# Diffusive stochastic evolution
+###
+
+###
 # Crude trajectory integrator
 ###
 
 # Return trajectory array [f1(now), f2(now), ...] 
 """
     trajectory(inc::Function, init::AbstractArray, tspan::Tuple{Float64,Float64},  
-                    fs::Function...; dt::Float64=1/10^4, points::Int=1000)
+               fs::Function...; dt::Float64=1/10^4, points::Int=1000, verbose=true)
 
 Compute time-stepped trajectory, starting from state `init`, incrementing with `inc`
 by time step `dt` for `t` in `tspan`, keeping `points` intermediate values
@@ -201,7 +227,7 @@ function trajectory(inc::Function, init::AbstractArray, tspan::Tuple{Float64,Flo
     const Nldt = Nl*dt                   # time-step per stored point
     # Preallocate trajectory arrays for speed
     valtypes = collect(typeof(f(init)) for f in fs)
-    traj = map(t->zeros(t, (Ns, 1)), valtypes)
+    traj = map(t->zeros(t, Ns), valtypes)
     ts = linspace(t0, tmax, Ns)
     # Function to update values
     function update!(i::Int, ρ)
@@ -228,5 +254,6 @@ function trajectory(inc::Function, init::AbstractArray, tspan::Tuple{Float64,Flo
     elapsed = toq()
     # Performance summary
     verbose && info("Time elapsed: ",elapsed," s, Steps per second: ",N/elapsed)
-    (ts, traj...)
+    # Return interpolated trajectory objects
+    (ts, map( v -> Trajectory{typeof(first(v))}(ts, v), traj)...)
 end
