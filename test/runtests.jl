@@ -223,15 +223,21 @@ l = slind(1e-6, t->0*q("z"), q("d"))
 
 # Test trajectory code
 t = trajectory(ham(0.0, q("z")), ground(q), (0.0, 1.0), ρ->ρ[1,1], dt=1e-3, points=100, verbose=false)
-@test t[1] == linspace(0.0,1.0,100)
-@test_approx_eq(t[2][end], QComp(1))
-@test_approx_eq(t[2](1.0), QComp(1))
+@test t[1].t == linspace(0.0,1.0,100)
+@test_approx_eq(t[1][end], QComp(1))
+@test_approx_eq(t[1](1.0), QComp(1))
+@test size(t[1]) == size(t[1].v)
 t = trajectory(ham(1e-4, (2π/4).*q("y")), ground(q), (0.0, 1.0), ρ->ρ[2,2], dt=1e-4, points=1000, verbose=false)
-@test t[1] == linspace(0.0,1.0,1000)
-@test_approx_eq_eps(t[2][end], QComp(1), 1e-4)
-@test_approx_eq_eps(t[2](1.0), QComp(1), 1e-4)
+@test t[1].t == linspace(0.0,1.0,1000)
+@test_approx_eq_eps(t[1][end], QComp(1), 1e-4)
+@test_approx_eq_eps(t[1](1.0), QComp(1), 1e-4)
 
 # Test trajectory point truncation
 t = trajectory(ham(0.0, q("z")), ground(q), (0.0, 1.0), ρ->ρ[1,1], dt=1e-2, points=1000, verbose=false)
-@test t[1] == linspace(0.0,1.0,99)
-@test_approx_eq(t[2][end], QComp(1))
+@test t[1].t == linspace(0.0,1.0,99)
+@test_approx_eq(t[1][end], QComp(1))
+
+# Test stochastic trajectory code
+t = trajectory(meas(1e-3, q("z"), [(q("z"), 2.0, 1.0)], q("d")), ground(q), (0.0, 1.0), ρ->ρ[1,1], dt=1e-3, points=100, verbose=false)
+@test t[1].t == linspace(0.0,1.0,100)
+@test length(t) == 2

@@ -41,24 +41,31 @@ DM = sqrt(Γ/2)*q("z");
 fs = collect(ρ -> real(expect(ρ, q(l))) for l in ["x","y","z"])
 
 # Integrate trajectory
-@time out = trajectory(lind(dt, H, DM), init, T, fs..., dt=dt)
-
-# PyPlot Whatnot
-p = plot(out[1],out[2],label=L"$x$")
-hold(true)
-plot(out[1],out[3],label=L"$y$")
-plot(out[1],out[4],label=L"$z$")
-ax = gca()
-ax[:set_ylim]([-1.1,1.1])
-xlabel(L"$t (2\pi/\Omega)$")
-ylabel("Bloch coordinates")
-title("Lindblad Evolution: Jump/No-Jump")
-legend()
-hold(false)
-show()
+trajectory(lind(dt, H, DM), init, T, fs..., dt=dt)
 ```
 
     INFO: Trajectory: steps = 1799, points = 1000, values = 3
     INFO: Time elapsed: 0.086969712 s, Steps per second: 20685.362278766657
 
 ![Lindblad Pulse Output](img/example_lindblad_pulse.png)
+
+```julia
+ensemble_realization(ymeas=true, η=0.4)
+```
+
+    INFO: Trajectory: steps = 899, points = 899, values = 3
+    INFO: Readout: values = 2
+    INFO: Time elapsed: 0.081660735 s, Steps per second: 11008.962875487221
+
+![Stochastic Z Readout Trajectory](img/example_z_trajectory.png)
+
+```julia
+ensemble_realization(n=2000, ymeas=true)
+```
+
+    INFO: Trajectories: 2000, steps each: 899, points each: 899, values each = 3
+    INFO: Readouts: values each = 2
+    INFO: Time elapsed: 49.345879942 s, Steps: 1798000, Steps per second: 36436.67925495152
+
+![Stochastic Z and Y Readout Ensemble](img/example_zy_ensemble.png)
+

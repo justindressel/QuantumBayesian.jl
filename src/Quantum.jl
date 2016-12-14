@@ -33,7 +33,7 @@ immutable QFactor <: QObj
     end
 end
 # Simplified constructor that auto-creates identity operator
-QFactor(dim::Int, name::QName) = QFactor(dim, name, QOps("i" => speye(QComp, dim)))
+QFactor(dim::Int, name::QName) = QFactor(dim, name, QOps("i" => speye(dim)))
 
 # Helper functions
 size(s :: QFactor) = s.dim
@@ -351,7 +351,7 @@ end
 ###
 # Hilbert-Schmidt inner product
 ###
-dot(a::AbstractArray, b::AbstractArray) = trace(a' * b)
+Base.dot(a::AbstractArray, b::AbstractArray) = trace(a' * b)
 
 ###
 # Define a Bra as a dual vector
@@ -394,7 +394,7 @@ function osc(levels::Int, name=""::QName)
     s = QFactor(levels, name)
     s.ops["d"] = sparse([x == y - 1 ? sqrt(QComp(x)) : QComp(0) for x=1:levels, y=1:levels])
     s.ops["u"] = s("d")'
-    s.ops["n"] = let l=1:levels; sparse(l,l,map(QComp,0:(levels - 1))) end
+    s.ops["n"] = let l=1:levels; sparse(l,l,map(QComp, 0:(levels - 1))) end
     s.ops["x"] = s("d") + s("u")
     s.ops["y"] = (s("d") - s("u")) .* im
     s

@@ -22,9 +22,17 @@ import Base.showarray
 import Base.length
 import Base.size
 import Base.getindex
+import Base.setindex!
+import Base.ndims
+import Base.indices
+import Base.print_matrix
 import Base.sub2ind
 import Base.ind2sub
 import Base.dot
+import Base.map
+import Base.mean
+import Base.median
+import Base.std
 ###
 
 #################################
@@ -41,8 +49,8 @@ typealias Time Float64
 typealias QComp Complex128
 typealias QInd Int
 typealias QName AbstractString
-typealias QOp{T,I} SparseMatrixCSC{T, I}
-typealias QKet{T,I} SparseVector{T, I}
+typealias QOp SparseMatrixCSC
+typealias QKet SparseVector
 typealias QOps{T,I} Dict{AbstractString, QOp{T,I}}
 ###
 
@@ -56,7 +64,7 @@ include("QuantumEvolution.jl")
 # Exports
 
 # QuantumBayesian
-export QObj, QComp, QInd, QName, QOp, QKet, QOps
+export Time, QObj, QComp, QInd, QName, QOp, QKet, QOps
 # Quantum
 export QFactor, QSpace, QView
 export size, length, show, showarray, sub2ind, ind2sub, getindex, setindex!
@@ -69,9 +77,12 @@ export comm, acomm, ⊖, ⊕, sand, diss, inn
 export scomm, sacomm, ssand, sdiss
 export expect, expectvec, weakvalue, weakvaluevec 
 # QuantumEvolution
-export Trajectory
-export ham, ham_rk4, lind, lind_rk4, trajectory
+export Trajectory, Ensemble
+export map, mean, median, std
+export size, length, ndims, print_matrix
+export ham, ham_rk4, lind, lind_rk4
 export sham, slind 
+export meas, trajectory, ensemble
 ###
 
 end # module
