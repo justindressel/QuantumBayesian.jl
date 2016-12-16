@@ -185,7 +185,7 @@ abcv = subview(sys, abc);
     else
         error("QView assumes an initial 1D or 2D array")
     end
-    QView{QComp,QInd,typeof(op2),typeof(perm)}(op2, perm)
+    QView{eltype(op2),Int,typeof(op2),typeof(perm)}(op2, perm)
 end
 subview(s::QFactor, op::AbstractArray) = subview(QSpace(s),op)
 
@@ -202,9 +202,13 @@ superket(op::QOp) = reshape(op, length(op), 1)
 Convert a superket back into a square matrix operator.
 """
 function unsuperket(op::QOp)
-    d = Int(sqrt(length(op)))
-    d^2 == length(op) || error("Not a superket")
-    reshape(op, d, d)
+    if :parent in fieldnames(op)
+        op.parent
+    else
+        d = Int(sqrt(length(op)))
+        d^2 == length(op) || error("Not a superket")
+        reshape(op, d, d)
+    end
 end
 
 """
@@ -348,96 +352,6 @@ end
 end
 
 
-###
-# Hilbert-Schmidt inner product
-###
-Base.dot(a::AbstractArray, b::AbstractArray) = trace(a' * b)
-
-###
-# Define a Bra as a dual vector
-###
-"""
-    bra(a::QKet)
-
-Construct a dual-vector (one-form) from a ket vector `a`.
-
-Such a one-form has type: (b::QKet) -> dot(a,b)
-"""
-bra(a::QKet) = (b::QKet) -> dot(a,b)
-
-
-##############################################################
-# Convenience Constructors for Quantum Spaces
-###
-
-###
-# Harmonic Oscillator
-###
-"""
-    osc(n::Int[, name="Osc(n)"::QName])
-
-Create harmonic oscillator in Fock basis with `n` levels.
-
-### Default ops for QFactor:
-  - "i" : identity operator
-  - "n" : number operator
-  - "d" : lowering operator
-  - "u" : raising operator
-  - "x" : in-phase quadrature
-  - "y" : out-of-phase quadrature
-
-"""
-function osc(levels::Int, name=""::QName)
-    if name == ""
-        name = "Osc($(levels))"
-    end
-    s = QFactor(levels, name)
-    s.ops["d"] = sparse([x == y - 1 ? sqrt(QComp(x)) : QComp(0) for x=1:levels, y=1:levels])
-    s.ops["u"] = s("d")'
-    s.ops["n"] = let l=1:levels; sparse(l,l,map(QComp, 0:(levels - 1))) end
-    s.ops["x"] = s("d") + s("u")
-    s.ops["y"] = (s("d") - s("u")) .* im
-    s
-end
-
-###
-# Qubit 
-###
-"""
-    qubit([name="Qubit"::QName])
-
-Create qubit in computational basis.
-
-**Note:** Rows are permuted from usual matrix representation. 
-This is so the 0 state can represent the ground state of energy 
-when constructing a qubit Hamiltonian.
-
-**Example:**
-```julia
-q = qubit()
-q("z") * groundvec(q) == sparse([QComp(-1); 0])  # True
-H = (ħ*ωq/2)*q("z") # Correct energy structure
-```
-
-### Default ops for QFactor:
-  - "i" : identity operator
-  - "d" : lowering operator (``σ_-``)
-  - "u" : raising operator  (``σ_+``)
-  - "x" : Pauli x operator  (``σ_x``)
-  - "y" : Pauli y operator  (``σ_y``)
-  - "z" : Pauli z operator  (``σ_z``)
-
-"""
-function qubit(name="Qubit") 
-    q = osc(2, name)
-    # Replace the number operator with a rescaling to get Pauli z
-    merge!(q.ops, Dict("z"=> 2 .* q("n") .- q("i")))
-    delete!(q.ops,"n")
-    q
-end
-
-
-
 #####################################################################
 # Convenience functions for generating operators and states
 ###
@@ -502,164 +416,3 @@ function projector(ψ::QKet)
 end
 transition(ψl,ψr) = sparse(ψl * ψr') / (vecnorm(ψl)*vecnorm(ψr))
 
-"""
-    coherentvec(o::QObj, α::Number)::QKet
-
-Create a coherent state ket vector with amplitude `α`.
-"""
-# Generate coherent state α in space o
-function coherentvec(o::QObj, α::Number)::QKet
-  m = length(o)
-  nbar = abs2(α)
-  @assert (nbar + 3*sqrt(nbar) <= m) "Mean n of $nbar too large for max n of $m."
-  e = exp(-nbar/2)
-  cv = map(k -> QComp(e*α^k/sqrt(gamma(k+1))), 0:(m - 1))
-  sparsevec(cv / norm(cv))
-end
-
-"""
-    coherent(o::QObj, α::QComp)::QKet
-
-Create a coherent state projection operator with amplitude `α`.
-"""
-coherent(o::QObj, α) = projector(coherentvec(o, α))
-
-
-############################################################
-# Convenience matrix operations
-##
-
-"""
-    comm(a, b) = a ⊖ b
-
-Commutator of operators `a` and `b`.
-
-### Returns:
-  - Anti-Hermitian operator: a * b' - b * a'
-"""
-comm(a, b) = a * b' - b * a'
-⊖ = comm
-
-"""
-    scomm(a)
-
-Superoperator for commutator with operator `a`. 
-Assumes Hermitian superket.
-
-### Returns:
-  - Superoperator: scomm(a) * superket(b) == superket(a * b - b * a')
-"""
-scomm(a) = superopl(a) - superopr(a')
-
-"""
-    acomm(a, b) = a ⊕ b
-
-Anti-commutator of operators `a` and `b`.
-
-### Returns:
-  - Hermitian operator: a * b' + b * a'
-"""
-acomm(a, b) = a * b' + b * a'
-⊕ = acomm
-
-"""
-    sacomm(a)
-
-Superoperator for anticommutator with operator `a`. 
-Assumes Hermitian superket.
-
-### Returns:
-  - Superoperator: scomm(a) * superket(b) == superket(a * b + b * a')
-"""
-sacomm(a) = superopl(a) + superopr(a')
-
-"""
-    sand(a, b)
-
-Sandwich `b` operator with `a`.
-
-### Returns:
-  - Operator: a * b * a'
-"""
-sand(a, b) = a * b * a'
-
-"""
-    ssand(a)
-
-Superoperator for sandwich with operator `a`. 
-
-### Returns:
-  - Superoperator: ssand(a) * superket(b) == superket(a * b * a')
-"""
-ssand(a) = superopl(a) * superopr(a')
-
-"""
-    diss(a)
-
-Dissipation function for `a` action.
-
-### Returns:
-  - Function: ρ -> sand(a, ρ) - acomm(at*a, ρ)/2
-"""
-diss(a) = ρ -> sand(a, ρ) - acomm(a'*a, ρ)/2
-
-"""
-    sdiss(a)
-
-Dissipation superoperator for `a` action.
-
-### Returns:
-  - ssand(a) - sacomm(at*a)/2
-"""
-sdiss(a) = ssand(a) - sacomm(a'*a)/2
-
-"""
-    inn(a)
-
-Innovation function for `a` action.
-
-### Returns:
-  - Function: ρ -> acomm(a, ρ) - trace(acomm(a, ρ))*ρ
-"""
-inn(a)  = ρ -> let ac = acomm(a, ρ);  ac - trace(ac)*ρ end
-
-"""
-    expect(ρ, op)
-
-Expectation value of `op` in state `ρ`.
-
-### Returns:
-  - trace(ρ * op) / trace(ρ)
-"""
-expect(ρ, op) = trace(ρ * op) / trace(ρ)
-
-"""
-    expectvec(ψ, op)
-
-Expectation value of `op` in state vector `ψ`.
-
-### Returns:
-  - dot(ψ, op * ψ) / dot(ψ, ψ)
-"""
-expectvec(ψ, op) = dot(ψ, op * ψ) / dot(ψ, ψ)
-
-"""
-    weakvalue(ρi, ρf, op)
-
-Generalized weak value of `op` with initial state `ρi`
-and final state `ρf`.
-
-### Returns:
-  - trace(ρf * op * ρi) / trace(ρf * ρi)
-"""
-weakvalue(ρi, ρf, op) = trace(ρf * op * ρi) / trace(ρf * ρi)
-
-"""
-    weakvaluevec(ψi, ψf, op)
-
-Weak value of `op` with initial state `ψi` and final state `ψf`.
-
-### Returns:
-  - dot(ψf, op * ψi) / dot(ψf, ψi)
-"""
-weakvaluevec(ψi, ψf, op) = dot(ψf, op * ψi) / dot(ψf, ψi)

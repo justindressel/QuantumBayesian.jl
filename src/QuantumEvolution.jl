@@ -47,6 +47,7 @@ immutable Ensemble{T} <: AbstractArray{T}
     end
 end
 Ensemble(t::LinSpace{Time}, n::Integer, T::Type) = Ensemble{T}(t, n, T)
+Ensemble{T}(t::LinSpace{Time}, a::AbstractArray{T}) = Ensemble{T}(t, a)
 Ensemble{T}(tr::Trajectory{T}) = let e = Ensemble{T}(tr.t, 1, T); e[1] = tr.v; e end
 @inline Base.@propagate_inbounds Base.getindex(e::Ensemble, i::Int...) = e.a[i...]
 @inline Base.@propagate_inbounds Base.setindex!(e::Ensemble, v::AbstractVector, n::Int) = Base.setindex!(e.a,v,:,n)
@@ -250,8 +251,8 @@ end
 ###
 
 """
-    meas(dt::Time, H, mlist::AbstractVector{Tuple{QOp, Time, Float64}}, alist::QOp...)
-    meas(dt, H, [(m, τ, η) ...], [a ...])
+    meas(dt::Time, H, mlist, alist...)
+    meas(dt, H, [(m, τ, η)...], a...)
 
 Return increment function for diffusive monitored evolution generated
 by Hamiltonian `H` and list of dissipative triples `mlist` over a 
@@ -286,7 +287,7 @@ and small dt.  [Physical Review A **92**, 052306 (2015)]
   - t::Time, ρ(t)::QOp -> (ρ(t+dt)::QOp, rlist::Float64...)
 
 """
-@inline function meas{T,I}(dt::Time, H, mlist::AbstractVector{Tuple{QOp{T,I}, Time, Float64}}, alist::QOp{T,I}...)
+@inline function meas(dt::Time, H, mlist, alist...)
     # Assemble readout generating functions and Kraus operators
     ros = Function[]
     gks = Function[]
@@ -416,8 +417,7 @@ stochastic, optionally store the simulated readouts as well.
     
     # Return ensemble of each stored value
     ts = linspace(tspan..., length(first(s)))
-    out = collect(Ensemble{eltype(s[i,1,1,1])}(ts, hcat(s[i,:]...)) 
-                  for i in 1:first(size(s)))
+    out = collect(Ensemble(ts, hcat(s[i,:]...)) for i in 1:first(size(s)))
     
     # Info if desired
     if verbose

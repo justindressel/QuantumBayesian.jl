@@ -47,16 +47,18 @@ abstract QObj <: Any
 # for the purposes of partial traces 
 typealias Time Float64
 typealias QComp Complex128
-typealias QInd Int
 typealias QName AbstractString
-typealias QOp SparseMatrixCSC
-typealias QKet SparseVector
+typealias QOp AbstractArray
+typealias QKet AbstractVector
 typealias QOps{T,I} Dict{AbstractString, QOp{T,I}}
 ###
 
 #######################
 # Include functionality
 include("Quantum.jl")
+include("QuantumOscillator.jl")
+include("QuantumBit.jl")
+include("QuantumOperations.jl")
 include("QuantumEvolution.jl")
 ###
 
