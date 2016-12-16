@@ -1,4 +1,4 @@
-# QuantumBayesian
+# QuantumBayesian.jl
 
 [![Build Status](https://travis-ci.org/justindressel/QuantumBayesian.svg?branch=master)](https://travis-ci.org/justindressel/QuantumBayesian)
 [![Build status](https://ci.appveyor.com/api/projects/status/dymo8l07qn610enr?svg=true)](https://ci.appveyor.com/project/justindressel/quantumbayesian)
