@@ -1,8 +1,8 @@
 # QuantumBayesian.jl
 
-[![Build Status](https://travis-ci.org/justindressel/QuantumBayesian.svg?branch=master)](https://travis-ci.org/justindressel/QuantumBayesian)
-[![Build status](https://ci.appveyor.com/api/projects/status/dymo8l07qn610enr?svg=true)](https://ci.appveyor.com/project/justindressel/quantumbayesian)
-[![codecov](https://codecov.io/gh/justindressel/QuantumBayesian/branch/master/graph/badge.svg)](https://codecov.io/gh/justindressel/QuantumBayesian)
+[![Build Status](https://travis-ci.org/justindressel/QuantumBayesian.jl.svg?branch=master)](https://travis-ci.org/justindressel/QuantumBayesian.jl)
+[![Build status](https://ci.appveyor.com/api/projects/status/n15qirnjmygpqqwa?svg=true)](https://ci.appveyor.com/project/justindressel/quantumbayesian-jl)
+[![codecov](https://codecov.io/gh/justindressel/QuantumBayesian.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/justindressel/QuantumBayesian.jl)
 [![DOI](https://zenodo.org/badge/74835141.svg)](https://zenodo.org/badge/latestdoi/74835141)
 
 Julia package for simulating quantum evolution efficiently, including the quantum Bayesian approach to stochastic measurement update and continuous readout. The package handles tensor products between arbitrary d-dimensional Hilbert space factors (including partial trace).
