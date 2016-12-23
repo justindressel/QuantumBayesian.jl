@@ -10,7 +10,7 @@ notifications:
   email: false
 script:
   - if [[ -a .git/shallow ]]; then git fetch --unshallow; fi
-  - julia -e 'Pkg.init(); Pkg.clone("https://github.com/justindressel/QuantumBayesian"); Pkg.build("QuantumBayesian")'
+  - julia -e 'Pkg.init(); Pkg.clone(pwd()); Pkg.build("QuantumBayesian")'
   - julia -e 'Pkg.test("QuantumBayesian", coverage=true)'
 after_success:
   # push coverage results to Coveralls
