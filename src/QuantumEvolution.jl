@@ -174,16 +174,24 @@ and small dt.  [Physical Review A **92**, 052306 (2015)]
   - t::Time, ρ(t)::QOp -> ρ(t+dt)
 
 """
+lind(dt::Time, H) = ham(dt, H)
 @inline function lind(dt::Time, H, alist::QOp...)
     # Rely on Hamiltonian to specify type of H
     h = ham(dt, H)
-    # Fall back to Hamiltonian evolution if no collapse operators specified
-    length(alist) == 0 && return h
     const n::QOp = sparse(sqrtm(eye(first(alist)) - 
                    dt * full(mapreduce(a -> a' * a, +, alist))))
     no(ρ::QOp)::QOp = n * ρ * n
     dec(ρ::QOp)::QOp = mapreduce(a -> a * ρ * a', +, alist) * dt
     (t::Time, ρ) -> let ρu = h(t, ρ); no(ρu) + dec(ρu) end
+end
+@inline function lind(dt::Time, H, alist::Function...)
+    # Rely on Hamiltonian to specify type of H
+    h = ham(dt, H)
+    n(t::Time)::QOp = sparse(sqrtm(eye(first(alist)(t)) - 
+                   dt * full(mapreduce(a -> a(t)' * a(t), +, alist))))
+    no(t::Time, ρ::QOp)::QOp = n(t) * ρ * n(t)
+    dec(t::Time, ρ::QOp)::QOp = mapreduce(a -> a(t) * ρ * a(t)', +, alist) * dt
+    (t::Time, ρ) -> let ρu = h(t, ρ); no(t, ρu) + dec(t, ρu) end
 end
 
 # Runge-Kutta Lindblad propagator
@@ -201,10 +209,10 @@ increment from the first-order Lindblad differential (master) equation.
   - t::Time, ρ(t)::QOp -> ρ(t) + dρ
 
 """
-@inline function lind_rk4(dt::Time, H::Function, alist::QOp...)
+lind_rk4(dt::Time, H) = ham_rk4(dt, H)
+@inline function lind_rk4(dt::Time, H::Function, alist::Function...)
     # Fall back to Hamiltonian evolution if no collapse operators specified
-    length(alist) == 0 && return ham_rk4(dt, H)
-    inc(t::Time, ρ::QOp)::QOp = - im * comm(H(t),ρ) + sum(map(a -> diss(a)(ρ), alist))
+    inc(t::Time, ρ::QOp)::QOp = - im * comm(H(t),ρ) + sum(map(a -> diss(a(t))(ρ), alist))
     function rinc(t::Time, ρ::QOp)::QOp
         dρ1::QOp = inc(t, ρ)
         dρ2::QOp = inc(t + dt/2, ρ + dρ1*dt/ 2)
@@ -216,7 +224,16 @@ increment from the first-order Lindblad differential (master) equation.
 end
 @inline function lind_rk4(dt::Time, H::QOp, alist::QOp...)
     h(t) = H
+    as = map(a -> (t -> a), alist)
+    lind_rk4(dt, h, as...)
+end
+@inline function lind_rk4(dt::Time, H::QOp, alist::Function...)
+    h(t) = H
     lind_rk4(dt, h, alist...)
+end
+@inline function lind_rk4(dt::Time, H::Function, alist::QOp...)
+    as = map(a -> (t -> a), alist)
+    lind_rk4(dt, H, as...)
 end
 
 # Superoperator Lindblad propagator
@@ -234,9 +251,8 @@ the increment.
   - t::Time, ρvec -> u * ρvec : Superoperator for total evolution over dt 
 
 """
+slind(dt::Time, H) = sham(dt, H)
 @inline function slind(dt::Time, H::QOp, alist::QOp...)
-    # Fall back to Hamiltonian evolution if no collapse operators specified
-    length(alist) == 0 && return sham(dt, H)
     const h = -im*scomm(H)
     const l = mapreduce(sdiss, +, alist) + h
     const u = sparse(expm(dt*full(l)))
@@ -244,6 +260,12 @@ the increment.
 end
 @inline function slind(dt::Time, H::Function, alist::QOp...)
     (t::Time, ρvec) -> slind(dt, H(t), alist...)(t, ρvec)
+end
+@inline function slind(dt::Time, H::QOp, alist::Function...)
+    (t::Time, ρvec) -> slind(dt, H, map(a -> a(t), alist)...)(t, ρvec)
+end
+@inline function slind(dt::Time, H::Function, alist::Function...)
+    (t::Time, ρvec) -> slind(dt, H(t), map(a -> a(t), alist)...)(t, ρvec)
 end
 
 ###
@@ -296,29 +318,41 @@ and small dt.  [Physical Review A **92**, 052306 (2015)]
         push!(ros, readout(dt, m, τ))
         push!(gks, gausskraus(dt, m, τ))
         # For inefficient measurements append to Lindblad dephasing
-        abs(1.0 - η) > 1e-4 && push!(as, sqrt((1.0-η)/(4*τ*η)).*m)
+        if abs(1.0 - η) > 1e-4 
+            if typeof(m) == QOp
+                push!(as, sqrt((1.0-η)/(4*τ*η)).*m)
+            elseif typeof(m) == Function
+                push!(as, t -> sqrt((1.0-η)/(4*τ*η)).*m(t))
+            end
+        end  
     end
     # Assemble total Lindblad dephasing using jump/no-jump method
     l = lind(dt, H, as...)
     # Increment that samples each readout, applies all Kraus operators
     # then applies Lindblad dephasing (including Hamiltonian evolution)
-    (t::Time, ρ) -> let rs = map(ro -> ro(ρ), ros),
-                        gs = map(z -> z[2](z[1]), zip(rs,gks)),
+    (t::Time, ρ) -> let rs = map(ro -> ro(t, ρ), ros),
+                        gs = map(z -> z[2](t, z[1]), zip(rs,gks)),
                         ρ1 = foldr(sand, ρ, gs);
                     (l(t, ρ1/trace(ρ1)), rs...) end
 end
 
 """
     readout(dt::Time, m::QOp, τ::Time)
+    readout(dt::Time, m::Function, τ::Time)
 
-Return a function that accepts a state ρ and returns a random number that
-is Gaussian-distributed about the mean ⟨(m + m')/2⟩ with standard deviation
-σ = sqrt(τ/dt).
+Return a function that accepts a (time t, state ρ) tuple and returns a random 
+number that is Gaussian-distributed about the mean ⟨(m + m')/2⟩ with standard 
+deviation σ = sqrt(τ/dt). ```m``` may be a function of time t that returns a QOp.
 """
 function readout(dt::Time, m::QOp, τ::Time)
     mo = (m .+ m')./2
     σ = sqrt(τ/dt)   
-    ρ -> σ*randn() + real(expect(ρ, mo))
+    (t::Time, ρ) -> σ*randn() + real(expect(ρ, mo))
+end
+function readout(dt::Time, m::Function, τ::Time)
+    σ = sqrt(τ/dt)   
+    (t::Time, ρ) -> let mo = (m(t) .+ m(t)')./2;
+                        σ*randn() + real(expect(ρ, mo)) end
 end
 
 """
@@ -344,7 +378,14 @@ function gausskraus(dt::Time, m::QOp, τ::Time)
     mo2 = full(mo^2./2)
     mf = full(m)
     v = dt/(2*τ)
-    r -> sparse(expm((r*v).*mf .- v.*mo2))
+    (t::Time, r) -> sparse(expm((r*v).*mf .- v.*mo2))
+end
+function gausskraus(dt::Time, m::Function, τ::Time)
+    v = dt/(2*τ)
+    (t::Time, r) -> let mo = (m(t) .+ m(t)')./2
+                        mo2 = full(mo^2./2)
+                        mf = full(m(t))
+                        sparse(expm((r*v).*mf .- v.*mo2)) end
 end
 
 

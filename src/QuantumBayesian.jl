@@ -28,7 +28,6 @@ import Base.indices
 import Base.print_matrix
 import Base.sub2ind
 import Base.ind2sub
-import Base.dot
 import Base.map
 import Base.mean
 import Base.median
@@ -72,7 +71,7 @@ export QFactor, QSpace, QView
 export size, length, show, showarray, sub2ind, ind2sub, getindex, setindex!
 export name, factors, unview, subview
 export superket, unsuperket, superopl, superopr
-export ⊗, lift, ptrace, dot, ⋅, bra
+export ⊗, lift, ptrace, bra
 export osc, qubit
 export groundvec, ground, projector, transition, coherentvec, coherent
 export comm, acomm, ⊖, ⊕, sand, diss, inn

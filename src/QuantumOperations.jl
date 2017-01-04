@@ -2,11 +2,6 @@
 # Convenience functionality for handling common operations
 ###
 
-###
-# Hilbert-Schmidt inner product
-###
-Base.dot(a::AbstractArray, b::AbstractArray) = trace(a' * b)
-
 """
     bra(a::QKet)
 
