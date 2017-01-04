@@ -313,7 +313,7 @@ and small dt.  [Physical Review A **92**, 052306 (2015)]
     # Assemble readout generating functions and Kraus operators
     ros = Function[]
     gks = Function[]
-    as = collect(QOp, alist)
+    as = typeof(first(mlist))[]
     for (m, τ, η) in mlist
         push!(ros, readout(dt, m, τ))
         push!(gks, gausskraus(dt, m, τ))
@@ -327,7 +327,7 @@ and small dt.  [Physical Review A **92**, 052306 (2015)]
         end  
     end
     # Assemble total Lindblad dephasing using jump/no-jump method
-    l = lind(dt, H, as...)
+    l = lind(dt, H, as..., alist...)
     # Increment that samples each readout, applies all Kraus operators
     # then applies Lindblad dephasing (including Hamiltonian evolution)
     (t::Time, ρ) -> let rs = map(ro -> ro(t, ρ), ros),
