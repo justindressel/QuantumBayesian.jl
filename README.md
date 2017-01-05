@@ -38,7 +38,7 @@ f(t) = 2*exp(-(t-3*τ)^2/2)/sqrt(2π)
 H(t) = f(t)*(Ω/2)*q("y");
 
 # Measurement dephasing
-DM = sqrt(Γ/2)*q("z");
+DM = [sqrt(Γ/2)*q("z")];
 # Stochastic monitoring (quantum-limited efficiency)
 SM = [(q("z"), τ, 1.0)]
 
@@ -46,7 +46,7 @@ SM = [(q("z"), τ, 1.0)]
 fs = collect(ρ -> real(expect(ρ, q(l))) for l in ["x","y","z"])
 
 # Lindblad pulse trajectory (plotting code omitted)
-t = trajectory(lind(dt, H, DM), init, T, fs..., dt=dt)
+t = trajectory(lind(dt, H, clist=DM), init, T, fs..., dt=dt)
 ```
 
     INFO: Trajectory: steps = 1799, points = 1000, values = 3
@@ -56,7 +56,7 @@ t = trajectory(lind(dt, H, DM), init, T, fs..., dt=dt)
 
 ```julia
 # Stochastic pulse trajectory (plotting code omitted)
-t = trajectory(meas(dt, H, SM), init, T, fs..., dt=dt)
+t = trajectory(meas(dt, H, mclist=SM), init, T, fs..., dt=dt)
 ```
 
     INFO: Trajectory: steps = 1799, points = 1000, values = 3
@@ -69,7 +69,7 @@ t = trajectory(meas(dt, H, SM), init, T, fs..., dt=dt)
 ```julia
 # Stochastic pulse ensemble (plotting code omitted)
 # No parallelization of ensemble creation
-t = ensemble(2500, meas(dt, H, SM), init, T, fs..., dt=dt)
+t = ensemble(2500, meas(dt, H, mclist=SM), init, T, fs..., dt=dt)
 # Mean plotted with Std-Dev shaded behind it
 ```
 
@@ -84,7 +84,7 @@ t = ensemble(2500, meas(dt, H, SM), init, T, fs..., dt=dt)
 ```julia
 # Stochastic CW Z-Y measurement (plotting code omitted)
 SM = [(q("z"), τ, 0.4), (q("y"), τ, 0.4)]
-t = trajectory(meas(dt, H, SM), init, T, fs..., dt=dt)
+t = trajectory(meas(dt, H, mclist=SM), init, T, fs..., dt=dt)
 ```
 
     INFO: Trajectory: steps = 899, points = 899, values = 3
@@ -98,7 +98,7 @@ t = trajectory(meas(dt, H, SM), init, T, fs..., dt=dt)
 # Stochastic CW Z-Y measurement ensemble (plotting code omitted)
 # Parallelization enabled with 4 additional processes
 SM = [(q("z"), τ, 0.4), (q("y"), τ, 0.4)]
-t = ensemble(2000, meas(dt, H, SM), init, T, fs..., dt=dt)
+t = ensemble(2000, meas(dt, H, mclist=SM), init, T, fs..., dt=dt)
 # Mean plotted with Std-Dev shaded behind it
 ```
 

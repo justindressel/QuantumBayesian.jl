@@ -27,17 +27,21 @@ h = ham_rk4(1e-2, 0*q("z"), ket=true)
 @test_approx_eq(h(0.0, xplus), xplus)
 
 # Test jump/no-jump Lindblad increment
-l = lind(1e-6, 0*q("z"), q("d"))
+l = lind(1e-6, 0*q("z"), clist=[q("d")])
+@test_approx_eq(l(0.0, q(1,1))[2,2], exp(-1e-6))
+l = lind(1e-6, clist=[q("d")])
 @test_approx_eq(l(0.0, q(1,1))[2,2], exp(-1e-6))
 
 # Test RK4 Lindblad increment
-l = lind_rk4(1e-6, 0*q("z"), q("d"))
+l = lind_rk4(1e-6, 0*q("z"), clist=[q("d")])
+@test_approx_eq(l(0.0, q(1,1))[2,2], exp(-1e-6))
+l = lind_rk4(1e-6, clist=[q("d")])
 @test_approx_eq(l(0.0, q(1,1))[2,2], exp(-1e-6))
 
 # Test Superoperator Lindblad increment
-l = slind(1e-6, 0*q("z"), q("d"))
+l = slind(1e-6, 0*q("z"), clist=[q("d")])
 @test_approx_eq(unsuperket(l(0.0, superket(q(1,1))))[2,2], exp(-1e-6))
-l = slind(1e-6, t->0*q("z"), q("d"))
+l = slind(1e-6, t->0*q("z"), clist=[q("d")])
 @test_approx_eq(unsuperket(l(0.0, superket(q(1,1))))[2,2], exp(-1e-6))
 
 # Test trajectory code
@@ -57,7 +61,10 @@ t = trajectory(ham(0.0, q("z")), ground(q), (0.0, 1.0), ρ->ρ[1,1], dt=1e-2, po
 @test_approx_eq(t[1][end], QComp(1))
 
 # Test stochastic trajectory code
-t = trajectory(meas(1e-3, q("z"), [(q("z"), 2.0, 1.0)], q("d")), ground(q), (0.0, 1.0), ρ->ρ[1,1], dt=1e-3, points=100, verbose=false)
+t = trajectory(meas(1e-3, q("z"), clist=[q("d")], mclist=[(q("z"), 2.0, 1.0)]), ground(q), (0.0, 1.0), ρ->ρ[1,1], dt=1e-3, points=100, verbose=false)
+@test t[1].t == linspace(0.0,1.0,100)
+@test length(t) == 2
+t = trajectory(meas(1e-3, q("z"), flist=[t->q("d")], mflist=[(t->q("z"), 2.0, 1.0)]), ground(q), (0.0, 1.0), ρ->ρ[1,1], dt=1e-3, points=100, verbose=false)
 @test t[1].t == linspace(0.0,1.0,100)
 @test length(t) == 2
 
@@ -73,7 +80,7 @@ e[1] = t[1].v
 @test e[1][1] == t[1].v[1]
 e = Ensemble(t[1].t, t[1].v) 
 @test e[1][1] == t[1].v[1]
-e = ensemble(2, meas(1e-3, q("z"), [(q("z"), 2.0, 1.0)], q("d")), ground(q), (0.0, 1.0), ρ->real(ρ[1,1]), dt=1e-3, points=100, verbose=false)
+e = ensemble(2, meas(1e-3, q("z"), mclist=[(q("z"), 2.0, 1.0)], clist=[q("d")]), ground(q), (0.0, 1.0), ρ->real(ρ[1,1]), dt=1e-3, points=100, verbose=false)
 @test e[1].n == 2
 @test length(mean(e[1])) == length(e[1](1))
 @test length(std(e[1])) == length(e[1](1))
