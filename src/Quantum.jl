@@ -33,7 +33,7 @@ immutable QFactor <: QObj
     end
 end
 # Simplified constructor that auto-creates identity operator
-QFactor(dim::Int, name::QName) = QFactor(dim, name, QOps("i" => speye(dim)))
+QFactor(dim::Int, name::QName) = QFactor(dim, name, QOps("i" => speye(QComp, dim)))
 
 # Helper functions
 size(s :: QFactor) = s.dim
