@@ -1,7 +1,7 @@
 ### Quantum.jl
 # Core functionality for setting up quantum Hilbert spaces
-# of operators, handling tensor products, and computing 
-# partial traces 
+# of operators, handling tensor products, and computing
+# partial traces
 ###
 
 
@@ -22,7 +22,7 @@ Single Hilbert space factor for a quantum space.
   - Indexing as an array with [] indexes from 1
   - Indexing as a function with () indexes from 0
 """
-immutable QFactor <: QObj
+struct QFactor <: QObj
     dim  :: Int
     name :: QName
     ops  :: QOps
@@ -61,11 +61,11 @@ Tensor product containing quantum Hilbert space factors.
   - Indexing as an array with [] indexes from 1
   - Indexing as a function with () indexes from 0
 """
-immutable QSpace <: QObj
+struct QSpace <: QObj
     factors :: Vector{QFactor}
     ops     :: QOps
 end
-# Convenient constructors 
+# Convenient constructors
 QSpace(f::QFactor) = QSpace(vec([f]), f.ops)
 QSpace(dim::Int, name::QName) = QSpace(QFactor(dim, name))
 
@@ -75,7 +75,7 @@ factors(s :: QSpace) = s.factors
 length(s :: QSpace) = prod(size(s))
 name(s :: QSpace) = join(map(name, factors(s)), " ⊗ ")
 
-# Overload function call 
+# Overload function call
 (q::QSpace)(arg::AbstractString) = q.ops[arg]
 
 
@@ -113,7 +113,7 @@ t[i,k,j,l] == a[i,j] * b[k,l]  # True
   - data : reshaped array with raw subsystem indices
   - perm : permutation array to fix order of subsystem indices
 """
-immutable QView{T,N,A<:AbstractArray,P} <: AbstractArray{T,N}
+struct QView{T,N,A<:AbstractArray,P} <: AbstractArray{T,N}
     data :: A
     perm :: P
 end
@@ -125,9 +125,9 @@ Base.showarray(io::IO, A::QView, b::Bool) = println(io, "QView")
 Base.size(A::QView) = size(A.data)[A.perm]
 Base.length(A::QView) = prod(size(A))
 # Overload indexing so that the correctly permuted indices are actually called
-@inline Base.@propagate_inbounds Base.getindex(A::QView, i::Int...) = 
+@inline Base.@propagate_inbounds Base.getindex(A::QView, i::Int...) =
     A.data[i[A.perm]...]
-@inline Base.@propagate_inbounds Base.getindex(A::QView, i::Int) = 
+@inline Base.@propagate_inbounds Base.getindex(A::QView, i::Int) =
     A.data[ind2sub(A.data,i)...]
 @inline Base.@propagate_inbounds Base.setindex!(A::QView, v, i::Int...) =
     setindex!(A.data, v, i[A.perm]...)
@@ -145,7 +145,7 @@ unview(op::QView) = op.data.parent
 """
     subview(s::QObj, op::QOp)
 
-Return a QView, which is a view on quantum operator that makes 
+Return a QView, which is a view on quantum operator that makes
 subsystem indices transparent.
 
 `t[i,j]` is equivalent to ``T_{i;j} = a_{i} ⊗ b_{j}``.
@@ -267,7 +267,7 @@ end
 """
     lift(q::QSpace, o::QOp, i::Int)
 
-Lift an operator of a single factor into a joint space, 
+Lift an operator of a single factor into a joint space,
 assuming that the factor is at position `i` of the tensor
 product.
 
@@ -293,7 +293,7 @@ Partial trace of o, over subsystems in positions n, inside quantum space s.
 ### Returns:
   - (snew, onew)
   - snew : reduced system space
-  - onew : reduced operator 
+  - onew : reduced operator
 
 """
 @inline ptrace(s::QFactor, v::QView, n::Int...) = trace(unview(v))
@@ -321,7 +321,7 @@ Partial trace of o, over subsystems in positions n, inside quantum space s.
     m = spzeros(QComp, size(newsys(repeat("i",length(sysind))))...)
     # Create new view with easy indexing
     mv = subview(newsys, m)
-    
+
     # Extract nonempty indices from original view
     vo = unview(v)
     psize = size(vo)
@@ -346,7 +346,7 @@ Partial trace of o, over subsystems in positions n, inside quantum space s.
 end
 @inline function ptrace(s::QSpace, v::QView, n::Int...)
     isempty(n) && return trace(unview(v))
-    n = sort([n...]) 
+    n = sort([n...])
     s2, v2 = ptrace(s,v,last(n))
     ptrace(s2, v2, n[1:end-1]...)
 end
@@ -361,14 +361,14 @@ end
 ###
 
 # Using (i) index for a 1D (vector) representation
-Base.@propagate_inbounds Base.getindex(A::QObj, i::Int) = 
+Base.@propagate_inbounds Base.getindex(A::QObj, i::Int) =
     sparsevec([i],[QComp(1)],length(A))
 # Using (i,j) indices for the 2D representation
-Base.@propagate_inbounds Base.getindex(A::QObj, i::Int, j::Int) = 
+Base.@propagate_inbounds Base.getindex(A::QObj, i::Int, j::Int) =
     sparse([i],[j],[QComp(1)],length(A),length(A))
 
 # Using (i1,j1,k1,...,i2,j2,k2,...) indices for subsystem representation
-@inline Base.@propagate_inbounds function Base.getindex(A::QObj, inds::Int...) 
+@inline Base.@propagate_inbounds function Base.getindex(A::QObj, inds::Int...)
     l = length(size(A))
     Ai = subview(A,A(repeat("i",l)))
     if length(inds) == 2*l
@@ -415,4 +415,3 @@ function projector(ψ::QKet)
     sparse(ρ / trace(ρ))
 end
 transition(ψl,ψr) = sparse(ψl * ψr') / (vecnorm(ψl)*vecnorm(ψr))
-

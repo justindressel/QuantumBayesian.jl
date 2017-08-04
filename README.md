@@ -5,7 +5,7 @@
 [![codecov](https://codecov.io/gh/justindressel/QuantumBayesian.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/justindressel/QuantumBayesian.jl)
 [![DOI](https://zenodo.org/badge/74835141.svg)](https://zenodo.org/badge/latestdoi/74835141)
 
-Julia package for simulating quantum evolution efficiently, including the quantum Bayesian approach to stochastic measurement update and continuous readout. The package handles tensor products between arbitrary d-dimensional Hilbert space factors (including partial trace).
+Julia package for simulating quantum evolution efficiently, including the quantum Bayesian approach to stochastic measurement update and continuous readout. The package handles tensor products between arbitrary d-dimensional Hilbert space factors (including partial trace). Note: now requires julia v0.6+.
 
 The package uses an efficient (sparse) matrix backend, with minimal structural overhead and a lightweight interface. By using proper completely positive maps to simulate time evolution, the package avoids common pitfalls when simulating (stochastic) differential equations for quantum systems. This technique guarantees that a physically sensible state is produced during the evolution, with time-step size affecting only solution precision, and not solution integrity.
 

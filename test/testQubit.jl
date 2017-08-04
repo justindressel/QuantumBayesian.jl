@@ -16,16 +16,15 @@
 xplus = (q[1] + q[2])/sqrt(2)
 xplus2 = (q(0) + q(1))/sqrt(2)
 @test xplus == xplus2
-@test_approx_eq(bra(xplus)(xplus), dot(xplus,xplus))
+@test bra(xplus)(xplus) ≈ dot(xplus,xplus)
 yplus = (q[1] + im*q[2])/sqrt(2)
 
 # Test transition operator
 xtoy = transition(yplus, xplus)
-@test_approx_eq(trace(xtoy), dot(xplus, yplus))
+@test trace(xtoy) ≈ dot(xplus, yplus)
 
 # Test expectations and weak values
 @test weakvaluevec(xplus, yplus, q("z")) == QComp(-im)
 xplusp = projector(xplus)
 yplusp = projector(yplus)
 @test weakvalue(xplusp, yplusp, q("z")) == QComp(-im)
-

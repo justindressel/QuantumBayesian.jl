@@ -128,9 +128,7 @@ pt2, pm2 = ptrace(pt, pm./2, 1)
 # Test superoperator
 ###
 
-@test_approx_eq(unsuperket(superopl(o("d")) * superket(o("n"))), o("d") * o("n"))
-@test_approx_eq(unsuperket(superopr(o("d")) * superket(o("n"))), o("n") * o("d"))
-@test_approx_eq(unsuperket(ssand(o("d")) * superket(o("n"))), o("d") * o("n") * o("d")')
-@test_approx_eq(unsuperket(scomm(o("d")) * superket(o("n"))), o("d") * o("n") - o("n") * o("d")')
-
-
+@test unsuperket(superopl(o("d")) * superket(o("n"))) ≈ o("d") * o("n")
+@test unsuperket(superopr(o("d")) * superket(o("n"))) ≈ o("n") * o("d")
+@test unsuperket(ssand(o("d")) * superket(o("n"))) ≈ o("d") * o("n") * o("d")'
+@test unsuperket(scomm(o("d")) * superket(o("n"))) ≈ o("d") * o("n") - o("n") * o("d")'
