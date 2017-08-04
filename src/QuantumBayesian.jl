@@ -11,12 +11,17 @@ module QuantumBayesian
 # Package dependences and imports
 #
 
-#using Distributions  # Minimize depedencies 
+# NOTE: there is no simple way to convert v0.5 to v0.6 of julia
+#       with the Compat module, since the syntax for inner
+#       constructors has fundamentally changed. The present code
+#       works only with v0.6+
+
+#using Distributions  # Minimize depedencies
 using Interpolations
 import Base.product
 
 # Imported solely for method overloading purposes
-import Base.call
+# import Base.call
 import Base.show
 import Base.showarray
 import Base.length
@@ -36,20 +41,20 @@ import Base.std
 
 #################################
 # Abstract types and type aliases
-abstract QObj <: Any
+abstract type QObj <: Any end
 
 # Note implementation is light-weight, using mostly type aliases
 # for the features in Base that do all the real work
 
-# Define efficient (sparse) representations for Quantum 
+# Define efficient (sparse) representations for Quantum
 # objects that keep track of tensor product factors properly
-# for the purposes of partial traces 
-typealias Time Float64
-typealias QComp Complex128
-typealias QName AbstractString
-typealias QOp AbstractArray
-typealias QKet AbstractVector
-typealias QOps{T,I} Dict{AbstractString, QOp{T,I}}
+# for the purposes of partial traces
+const Time = Float64
+const QComp = Complex128
+const QName = AbstractString
+const QOp = AbstractArray
+const QKet = AbstractVector
+const QOps = Dict{AbstractString, QOp}
 ###
 
 #######################
@@ -76,14 +81,14 @@ export osc, qubit
 export groundvec, ground, projector, transition, coherentvec, coherent
 export comm, acomm, ⊖, ⊕, sand, diss, inn
 export scomm, sacomm, ssand, sdiss
-export expect, expectvec, weakvalue, weakvaluevec 
+export expect, expectvec, weakvalue, weakvaluevec
 # QuantumEvolution
 export Trajectory, Ensemble
 export map, mean, median, std
 export size, length, ndims, print_matrix
 export ham, ham_rk4, lind, lind_rk4
-export sham, slind 
-export meas, trajectory, ensemble
+export sham, slind
+export meas, trajectory, ensemble, trajectoryToEnsemble
 ###
 
 end # module
