@@ -515,8 +515,16 @@ function simulate(inc::Function, init,
 
     # Preallocate trajectory arrays for speed
     traj = [let fi=f(init); Array{typeof(fi)}(Ns) end for f in fs]
+    # Functions to update values
+    function update!(i::Int, ρ)
+        for k in 1:Nf
+            @inbounds traj[k][i] = fs[k](ρ)
+        end
+    end
+    next(t::Time, ρ) = inc(t, ρ)
 
-    # Trial point to test for any stochastic readout
+    # Modify preallocation and updates for stochastic readout
+    # Trial point to test for readout
     pinit = inc(first(tspan), init)
     if readout && typeof(pinit) <: Tuple
         # Stored readout variables per point
@@ -524,25 +532,17 @@ function simulate(inc::Function, init,
         # Preallocate readout arrays for speed
 	rtraj = [Array{typeof(r)}(Ns) for r in pinit[2:end]]
         append!(traj, rtraj)
+	# Specialize updates to handle readout tuples
+        function update!(i::Int, t::Tuple)
+            update!(i, first(t))
+            for k in 1:Nr
+                @inbounds traj[Nf+k][i] = t[k+1]
+            end
+        end
+        next(t::Time, tup::Tuple) = inc(t, first(tup))
     else
         const Nr = 0
     end
-
-    # Functions to update values
-    # Use types to compile away tuple distinction
-    function update!(i::Int, t::Tuple)
-        update!(i, first(t))
-        for k in 1:Nr
-            @inbounds traj[Nf+k][i] = t[k+1]
-        end
-    end
-    function update!(i::Int, ρ)
-        for k in 1:Nf
-            @inbounds traj[k][i] = fs[k](ρ)
-        end
-    end
-    next(t::Time, tup::Tuple) = inc(t, first(tup))
-    next(t::Time, ρ) = inc(t, ρ)
 
     # Seed loop
     verbose && info("Trajectory: steps = ",N-1,", points = ",Ns,", values = ",Nf)
