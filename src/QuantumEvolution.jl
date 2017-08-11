@@ -515,18 +515,19 @@ function simulate(inc::Function, init::AbstractArray,
     # Constants for integration
     const t0 = first(tspan)              # Initial time
     const tmax = last(tspan)             # Final time
-    const N = Int(fld(abs(tmax-t0), dt)) # total num of steps
+    ts = t0:dt:tmax                      # simulated time range
+    const N = length(ts)                 # total num of points
     if points > N
-        const Ns = Int(N)                # reset points if needed
+        const Ns = N                     # reset points if needed
     else
-        const Ns = Int(points)           # stored points
+        const Ns = points                # stored points
     end
     const Nf = length(fs)                # stored f values per point
-    const Nl = Int(cld(N, points))       # steps per stored point
+    const Nl = Int(cld(N-1, points))     # steps per stored point
     const Nldt = Nl*dt                   # time-step per stored point
 
     # Preallocate trajectory arrays for speed
-    traj = map(t->zeros(t, Ns), valtypes)
+    traj = map(t->zeros(t, Ns), vec(valtypes))
     ts = linspace(t0, tmax, Ns)
 
     # Functions to update values
@@ -546,7 +547,7 @@ function simulate(inc::Function, init::AbstractArray,
     next(t::Time, ρ) = inc(t, ρ)
 
     # Seed loop
-    verbose && info("Trajectory: steps = ",N,", points = ",Ns,", values = ",Nf)
+    verbose && info("Trajectory: steps = ",N-1,", points = ",Ns,", values = ",Nf)
     verbose && readout && Nr > 0 && info("Readout: values = ",Nr)
     tic()
     now = init
@@ -564,6 +565,6 @@ function simulate(inc::Function, init::AbstractArray,
     end
     elapsed = toq()
     # Performance summary
-    verbose && info("Time elapsed: ",elapsed," s, Steps per second: ",N/elapsed)
+    verbose && info("Time elapsed: ",elapsed," s, Steps per second: ",(N-1)/elapsed)
     traj
 end

@@ -57,7 +57,7 @@ t = trajectory(ham(1e-4, (2π/4).*q("y")), ground(q), (0.0, 1.0), ρ->ρ[2,2], d
 
 # Test trajectory point truncation
 t = trajectory(ham(0.0, q("z")), ground(q), (0.0, 1.0), ρ->ρ[1,1], dt=1e-2, points=1000, verbose=false)
-@test t[1].t == linspace(0.0,1.0,99)
+@test t[1].t == linspace(0.0,1.0,101)
 @test t[1][end] ≈ QComp(1)
 
 # Test stochastic trajectory code
