@@ -45,10 +45,6 @@ abstract type QObj <: Any end
 
 # Note implementation is light-weight, using mostly type aliases
 # for the features in Base that do all the real work
-
-# Define efficient (sparse) representations for Quantum
-# objects that keep track of tensor product factors properly
-# for the purposes of partial traces
 const Time = Float64
 const QComp = Complex128
 const QName = AbstractString
