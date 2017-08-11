@@ -422,7 +422,7 @@ end
 
 # Return trajectory array [f1(now), f2(now), ...]
 """
-    trajectory(inc::Function, init::AbstractArray,
+    trajectory(inc::Function, init,
                     tspan::Tuple{Time,Time}, fs::Function...;
                     dt::Time=1/10^4, points::Int=1000, verbose=true, readout=true)
 
@@ -436,7 +436,7 @@ the simulated readout as well.
     [Trajectory(f(ρ(t)))..., Trajectory(r(t))...]
 
 """
-@inline function trajectory(inc::Function, init::AbstractArray,
+@inline function trajectory(inc::Function, init,
                     tspan::Tuple{Time,Time}, fs::Function...;
                     dt::Time=1/10^4, points::Int=1000, verbose=true, readout=true)
     # Simulate and collect data
@@ -448,7 +448,7 @@ the simulated readout as well.
 end
 
 """
-    ensemble(n::Integer, inc::Function, init::AbstractArray,
+    ensemble(n::Integer, inc::Function, init,
              tspan::Tuple{Time,Time}, fs::Function...;
              dt::Time=1/10^4, points::Int=1000, verbose=true, readout=true)
 
@@ -462,7 +462,7 @@ stochastic, optionally store the simulated readouts as well.
     [Ensemble(f(ρ(t)))..., Ensemble(r(t))...]
 
 """
-@inline function ensemble(n::Integer, inc::Function, init::AbstractArray,
+@inline function ensemble(n::Integer, inc::Function, init,
                   tspan::Tuple{Time,Time}, fs::Function...;
                   dt::Time=1/10^4, points::Int=1000, verbose=true, readout=true)
     # Information if desired
@@ -496,22 +496,9 @@ stochastic, optionally store the simulated readouts as well.
     out
 end
 
-function simulate(inc::Function, init::AbstractArray,
+function simulate(inc::Function, init,
                     tspan::Tuple{Time,Time}, fs::Function...;
                     dt::Time=1/10^4, points::Int=1000, verbose=true, readout=true)
-    # Trial point to test for any stochastic readout
-    pinit = inc(first(tspan), init)
-    valtypes = collect(typeof(f(init)) for f in fs)
-    if readout && typeof(pinit) <: Tuple
-        # Stored readout variables per point
-        const Nr = length(pinit) - 1
-        # Types for readout
-        rtypes = collect(typeof(r) for r in pinit[2:end])
-        append!(valtypes, rtypes)
-    else
-        const Nr = 0
-    end
-
     # Constants for integration
     const t0 = first(tspan)              # Initial time
     const tmax = last(tspan)             # Final time
@@ -527,8 +514,19 @@ function simulate(inc::Function, init::AbstractArray,
     const Nldt = Nl*dt                   # time-step per stored point
 
     # Preallocate trajectory arrays for speed
-    traj = map(t->zeros(t, Ns), vec(valtypes))
-    ts = linspace(t0, tmax, Ns)
+    traj = [let fi=f(init); Array{typeof(fi)}(Ns) end for f in fs]
+
+    # Trial point to test for any stochastic readout
+    pinit = inc(first(tspan), init)
+    if readout && typeof(pinit) <: Tuple
+        # Stored readout variables per point
+        const Nr = length(pinit) - 1
+        # Preallocate readout arrays for speed
+	rtraj = [Array{typeof(r)}(Ns) for r in pinit[2:end]]
+        append!(traj, rtraj)
+    else
+        const Nr = 0
+    end
 
     # Functions to update values
     # Use types to compile away tuple distinction
