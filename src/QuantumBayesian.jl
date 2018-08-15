@@ -34,9 +34,9 @@ import Base.print_matrix
 import Base.sub2ind
 import Base.ind2sub
 import Base.map
-import Base.mean
-import Base.median
-import Base.std
+import Statistics.mean
+import Statistics.median
+import Statistics.std
 ###
 
 #################################
