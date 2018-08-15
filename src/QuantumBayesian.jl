@@ -31,8 +31,8 @@ import Base.setindex!
 import Base.ndims
 import Base.indices
 import Base.print_matrix
-import Base.sub2ind
-import Base.ind2sub
+import Base.IteratorsMD
+import Base.LinearIndices
 import Base.map
 import Statistics.mean
 import Statistics.median
