@@ -31,12 +31,12 @@ import Base.setindex!
 import Base.ndims
 import Base.indices
 import Base.print_matrix
-import Base.sub2ind
-import Base.ind2sub
+import Base.IteratorsMD
+import Base.LinearIndices
 import Base.map
-import Base.mean
-import Base.median
-import Base.std
+import Statistics.mean
+import Statistics.median
+import Statistics.std
 ###
 
 #################################
@@ -46,7 +46,7 @@ abstract type QObj <: Any end
 # Note implementation is light-weight, using mostly type aliases
 # for the features in Base that do all the real work
 const Time = Float64
-const QComp = Complex128
+const QComp = ComplexF64
 const QName = AbstractString
 const QOp = AbstractArray
 const QKet = AbstractVector
@@ -69,7 +69,7 @@ include("QuantumEvolution.jl")
 export Time, QObj, QComp, QInd, QName, QOp, QKet, QOps
 # Quantum
 export QFactor, QSpace, QView
-export size, length, show, showarray, sub2ind, ind2sub, getindex, setindex!
+export size, length, show, showarray, CartesianIndices, LinearIndices, getindex, setindex!
 export name, factors, unview, subview
 export superket, unsuperket, superopl, superopr
 export ⊗, lift, ptrace, bra
