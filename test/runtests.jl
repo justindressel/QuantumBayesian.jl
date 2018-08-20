@@ -1,7 +1,9 @@
 module QuantumTest
 
 using QuantumBayesian
-using Base.Test
+using Test
+using LinearAlgebra
+using SparseArrays
 
 ###
 # Fixtures for tests

@@ -11,10 +11,10 @@
 
 struct Trajectory{T} <: AbstractVector{T}
     v :: AbstractVector{T}
-    t :: Range{Time}
+    t :: AbstractRange{Time}
     interpolation
     # Input auto-interpolation
-    function Trajectory{T}(t::Range{Time}, v::AbstractVector{T}) where T
+    function Trajectory{T}(t::AbstractRange{Time}, v::AbstractVector{T}) where T
         i = interpolate( (collect(t),), v, Gridded(Constant()) )
         new(v, t, i)
     end
@@ -33,28 +33,28 @@ length(T::Trajectory) = length(T.v)
 
 struct Ensemble{T} <: AbstractArray{T, 2}
     a :: AbstractArray{T, 2}
-    t :: Range{Time}
+    t :: AbstractRange{Time}
     n :: Integer
-    function Ensemble{T}(t::Range{Time}, n::Integer, ::Type{T}) where {T}
+    function Ensemble{T}(t::AbstractRange{Time}, n::Integer, ::Type{T}) where {T}
         l = length(t)
         a = zeros(T, l, n)
         new(a, t, n)
     end
-    function Ensemble{T}(t::Range{Time}, a::AbstractArray{T, 2}) where {T}
+    function Ensemble{T}(t::AbstractRange{Time}, a::AbstractArray{T, 2}) where {T}
         length(t) == first(size(a)) || error("Incompatible array size")
         n = last(size(a))
         new(a, t, n)
     end
-    function Ensemble{T}(tr::Trajectory{T}) where {T} 
+    function Ensemble{T}(tr::Trajectory{T}) where {T}
 	let e = Ensemble(tr.t, 1, T)
 	    e[1] = tr.v
-            e 
+            e
         end
     end
 end
-Ensemble(t::R, n::Integer, T::Type) where R<:Range{Time} = Ensemble{T}(t, n, T)
-Ensemble(t::R, a::AbstractVector{T}) where {T,R<:Range{Time}} = Ensemble{T}(t,reshape(a,length(a),1))
-Ensemble(t::R, a::AbstractArray{T,2}) where {T,R<:Range{Time}} = Ensemble{T}(t,a)
+Ensemble(t::R, n::Integer, T::Type) where R<:AbstractRange{Time} = Ensemble{T}(t, n, T)
+Ensemble(t::R, a::AbstractVector{T}) where {T,R<:AbstractRange{Time}} = Ensemble{T}(t,reshape(a,length(a),1))
+Ensemble(t::R, a::AbstractArray{T,2}) where {T,R<:AbstractRange{Time}} = Ensemble{T}(t,a)
 Ensemble(tr::Trajectory{T}) where {T} = Ensemble{T}(tr)
 @inline Base.@propagate_inbounds Base.getindex(e::Ensemble, i::Int...) = e.a[i...]
 @inline Base.@propagate_inbounds Base.setindex!(e::Ensemble, v::AbstractVector, n::Int) = Base.setindex!(e.a,v,:,n)
@@ -62,9 +62,9 @@ Ensemble(tr::Trajectory{T}) where {T} = Ensemble{T}(tr)
 size(e::Ensemble) = size(e.a)
 length(e::Ensemble) = length(e.a)
 Base.ndims(e::Ensemble) = ndims(e.a)
-Base.indices(e::Ensemble, d::Integer) = indices(e.a, d)
+#Base.indices(e::Ensemble, d::Integer) = indices(e.a, d)
 
-function map{T}(f::Function, e::Ensemble{T})
+function map(f::Function, e::Ensemble{T}) where {T}
     max = length(e.t)
     tr = zeros(T, max)
     for i in 1:max
@@ -95,8 +95,8 @@ Uses an exact matrix exponential, assuming no time-dependence.
 
 """
 function ham(dt::Time, H::QOp; ket=false)
-    const u::QOp = sparse(expm( -im * dt * full(H)))
-    const ut = u'
+    u::QOp = sparse(exp( -im * dt * Array(H)))
+    ut = u'
     if ket
         (t::Time, ψ::QKet) -> u * ψ
     else
@@ -121,8 +121,8 @@ Uses an exact matrix exponential, assuming no time-dependence.
 
 """
 function sham(dt::Time, H::QOp)
-    const u::QOp = sparse(expm( -im * dt * full(H)))
-    const l = superopl(u)*superopr(u')
+    u::QOp = sparse(exp( -im * dt * Array(H)))
+    l = superopl(u)*superopr(u')
     (t::Time, ρvec) -> l * ρvec
 end
 function sham(dt::Time, H::Function)
@@ -195,8 +195,8 @@ function lind(dt::Time; clist=QOp[], flist=Function[])
     if isempty(clist)
         push!(ns, (t, ρ) -> ρ)
     else
-        const n::QOp = sparse(sqrtm(eye(first(clist)) -
-                       dt * full(mapreduce(a -> a' * a, +, clist))))
+        n::QOp = sparse(sqrt(Array(QComp(1.0)LinearAlgebra.I,size(first(clist))) -
+                       dt * Array(mapreduce(a -> a' * a, +, clist))))
         push!(ns, (t, ρ) -> n * ρ * n)
         push!(ds, (t, ρ) -> mapreduce(a -> a * ρ * a', +, clist) * dt)
     end
@@ -204,8 +204,8 @@ function lind(dt::Time; clist=QOp[], flist=Function[])
     if isempty(flist)
         push!(ns, (t, ρ) -> ρ)
     else
-        nf(t::Time)::QOp = sparse(sqrtm(eye(first(flist)(t)) -
-                           dt * full(mapreduce(a -> a(t)' * a(t), +, flist))))
+        nf(t::Time)::QOp = sparse(sqrt(Array(QComp(1.0)LinearAlgebra.I,size(first(flist)(t))) -
+                           dt * Array(mapreduce(a -> a(t)' * a(t), +, flist))))
         push!(ns, (t, ρ) -> nf(t) * ρ * nf(t))
         push!(ds, (t, ρ) -> mapreduce(a -> a(t) * ρ * a(t)', +, flist) * dt)
     end
@@ -237,14 +237,14 @@ increment from the first-order Lindblad differential (master) equation.
 lind_rk4(dt::Time, H) = ham_rk4(dt, H)
 function lind_rk4(dt::Time; clist=QOp[], flist=Function[])
     inc(t::Time, ρ::QOp)::QOp =
-        mapreduce(a -> diss(a)(ρ), +, zero(ρ), clist) +
-        mapreduce(a -> diss(a(t))(ρ), +, zero(ρ), flist)
+        mapreduce(a -> diss(a)(ρ), +, clist; init=zero(ρ)) +
+        mapreduce(a -> diss(a(t))(ρ), +, flist; init=zero(ρ))
     (t::Time, ρ) -> ρ + rinc(t, ρ, inc, dt)
 end
 function lind_rk4(dt::Time, H::Function; clist=QOp[], flist=Function[])
     inc(t::Time, ρ::QOp)::QOp = - im * comm(H(t),ρ) +
-        mapreduce(a -> diss(a)(ρ), +, zero(ρ), clist) +
-        mapreduce(a -> diss(a(t))(ρ), +, zero(ρ), flist)
+        mapreduce(a -> diss(a)(ρ), +, clist; init=zero(ρ)) +
+        mapreduce(a -> diss(a(t))(ρ), +, flist; init=zero(ρ))
     (t::Time, ρ) -> ρ + rinc(t, ρ, inc, dt)
 end
 function lind_rk4(dt::Time, H::QOp; clist=QOp[], flist=Function[])
@@ -269,16 +269,16 @@ the increment.
 """
 slind(dt::Time, H) = sham(dt, H)
 function slind(dt::Time, H::QOp; clist=QOp[], flist=Function[])
-    const h = -im*scomm(H)
+    h = -im*scomm(H)
     if isempty(flist)
-        let l = h + mapreduce(sdiss, +, zero(h), clist),
-            u = sparse(expm(dt*full(l)));
+        let l = h + mapreduce(sdiss, +, clist; init=zero(h)),
+            u = sparse(exp(dt*Array(l)));
             (t::Time, ρvec) -> u * ρvec
         end
     else
-        let l(t::Time) = h + mapreduce(sdiss, +, zero(h), clist) +
-                             mapreduce(f -> sdiss(f(t)), +, zero(h), flist),
-            u(t::Time) = sparse(expm(dt*full(l(t))))
+        let l(t::Time) = h + mapreduce(sdiss, +, clist; init=zero(h)) +
+                             mapreduce(f -> sdiss(f(t)), +, flist; init=zero(h)),
+            u(t::Time) = sparse(exp(dt*Array(l(t))))
             (t::Time, ρvec) -> u(t) * ρvec
         end
     end
@@ -359,8 +359,8 @@ function meas(dt::Time, H; mclist=Tuple{QOp,Time,Float64}[], mflist=Tuple{Any,Ti
     # then applies Lindblad dephasing (including Hamiltonian evolution)
     (t::Time, ρ) -> let rs = map(ro -> ro(t, ρ), ros),
                         gs = map(z -> z[2](t, z[1]), zip(rs,gks)),
-                        ρ1 = foldr(sand, ρ, gs);
-                    (l(t, ρ1/trace(ρ1)), rs...) end
+                        ρ1 = foldr(sand, gs; init=ρ);
+                    (l(t, ρ1/tr(ρ1)), rs...) end
 end
 
 """
@@ -401,18 +401,18 @@ subsequent state renormalization, to simply yield:
 
 """
 function gausskraus(dt::Time, m::QOp, τ::Time)
-    mo = (m .+ m')./2
-    mo2 = full(mo^2./2)
-    mf = full(m)
+    mo = (m .+ m') ./ 2
+    mo2 = Array(mo^2 ./ 2)
+    mf = Array(m)
     v = dt/(2*τ)
-    (t::Time, r) -> sparse(expm((r*v).*mf .- v.*mo2))
+    (t::Time, r) -> sparse(exp((r*v).*mf .- v.*mo2))
 end
 function gausskraus(dt::Time, m::Function, τ::Time)
     v = dt/(2*τ)
-    (t::Time, r) -> let mo = (m(t) .+ m(t)')./2
-                        mo2 = full(mo^2./2)
-                        mf = full(m(t))
-                        sparse(expm((r*v).*mf .- v.*mo2)) end
+    (t::Time, r) -> let mo = (m(t) .+ m(t)') ./ 2
+                        mo2 = Array(mo^2 ./ 2)
+                        mf = Array(m(t))
+                        sparse(exp((r*v) .* mf .- v .* mo2)) end
 end
 
 
@@ -443,7 +443,7 @@ the simulated readout as well.
     s = simulate(inc, init, tspan, fs...,
                  dt=dt, points=points, verbose=verbose, readout=readout)
     # Return interpolated trajectory objects
-    ts = linspace(tspan..., length(first(s)))
+    ts = range(first(tspan), length=length(first(s)), stop=last(tspan))
     map(v -> Trajectory{typeof(first(v))}(ts, v), s)
 end
 
@@ -475,16 +475,16 @@ stochastic, optionally store the simulated readouts as well.
             info("Readouts: values each = ", length(pinit)-1)
     end
 
-    tic()
+    inittime=time()
     # Simulate and collect data
     # Uses pmap to optionally support parallelization
     s = hcat(pmap( _ -> simulate(inc, init, tspan, fs...,
                       dt=dt, points=points, verbose=false, readout=readout),
                 1:n)...)
-    elapsed = toq()
+    elapsed = time() - inittime
 
     # Return ensemble of each stored value
-    ts = linspace(tspan..., length(first(s)))
+    ts = range(first(tspan), length=length(first(s)), stop=last(tspan))
     out = collect(Ensemble(ts, hcat(s[i,:]...)) for i in 1:first(size(s)))
 
     # Info if desired
@@ -500,21 +500,21 @@ function simulate(inc::Function, init,
                     tspan::Tuple{Time,Time}, fs::Function...;
                     dt::Time=1/10^4, points::Int=1000, verbose=true, readout=true)
     # Constants for integration
-    const t0 = first(tspan)              # Initial time
-    const tmax = last(tspan)             # Final time
+    t0 = first(tspan)              # Initial time
+    tmax = last(tspan)             # Final time
     ts = t0:dt:tmax                      # simulated time range
-    const N = length(ts)                 # total num of points
+    N = length(ts)                 # total num of points
     if points > N
-        const Ns = N                     # reset points if needed
+        Ns = N                     # reset points if needed
     else
-        const Ns = points                # stored points
+        Ns = points                # stored points
     end
-    const Nf = length(fs)                # stored f values per point
-    const Nl = Int(cld(N-1, points))     # steps per stored point
-    const Nldt = Nl*dt                   # time-step per stored point
+    Nf = length(fs)                # stored f values per point
+    Nl = Int(cld(N-1, points))     # steps per stored point
+    Nldt = Nl*dt                   # time-step per stored point
 
     # Preallocate trajectory arrays for speed
-    traj = [let fi=f(init); Array{typeof(fi)}(Ns) end for f in fs]
+    traj = [let fi=f(init); Array{typeof(fi)}(undef,Ns) end for f in fs]
     # Functions to update values
     function update!(i::Int, ρ)
         for k in 1:Nf
@@ -528,9 +528,9 @@ function simulate(inc::Function, init,
     pinit = inc(first(tspan), init)
     if readout && typeof(pinit) <: Tuple
         # Stored readout variables per point
-        const Nr = length(pinit) - 1
+        Nr = length(pinit) - 1
         # Preallocate readout arrays for speed
-	rtraj = [Array{typeof(r)}(Ns) for r in pinit[2:end]]
+	rtraj = [Array{typeof(r)}(undef,Ns) for r in pinit[2:end]]
         append!(traj, rtraj)
 	# Specialize updates to handle readout tuples
         function update!(i::Int, t::Tuple)
@@ -541,13 +541,13 @@ function simulate(inc::Function, init,
         end
         next(t::Time, tup::Tuple) = inc(t, first(tup))
     else
-        const Nr = 0
+        Nr = 0
     end
 
     # Seed loop
     verbose && info("Trajectory: steps = ",N-1,", points = ",Ns,", values = ",Nf)
     verbose && readout && Nr > 0 && info("Readout: values = ",Nr)
-    tic()
+    inittime = time()
     now = init
     tnow = t0
     update!(1, now)
@@ -561,7 +561,7 @@ function simulate(inc::Function, init,
         # store point
         update!(i, now)
     end
-    elapsed = toq()
+    elapsed = time() - inittime
     # Performance summary
     verbose && info("Time elapsed: ",elapsed," s, Steps per second: ",(N-1)/elapsed)
     traj

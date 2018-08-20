@@ -25,7 +25,7 @@ comm(a, b) = a * b' - b * a'
 """
     scomm(a)
 
-Superoperator for commutator with operator `a`. 
+Superoperator for commutator with operator `a`.
 Assumes Hermitian superket.
 
 ### Returns:
@@ -47,7 +47,7 @@ acomm(a, b) = a * b' + b * a'
 """
     sacomm(a)
 
-Superoperator for anticommutator with operator `a`. 
+Superoperator for anticommutator with operator `a`.
 Assumes Hermitian superket.
 
 ### Returns:
@@ -68,7 +68,7 @@ sand(a, b) = a * b * a'
 """
     ssand(a)
 
-Superoperator for sandwich with operator `a`. 
+Superoperator for sandwich with operator `a`.
 
 ### Returns:
   - Superoperator: ssand(a) * superket(b) == superket(a * b * a')
@@ -101,9 +101,9 @@ sdiss(a) = ssand(a) - sacomm(a'*a)/2
 Innovation function for `a` action.
 
 ### Returns:
-  - Function: ρ -> acomm(a, ρ) - trace(acomm(a, ρ))*ρ
+  - Function: ρ -> acomm(a, ρ) - tr(acomm(a, ρ))*ρ
 """
-inn(a)  = ρ -> let ac = acomm(a, ρ);  ac - trace(ac)*ρ end
+inn(a)  = ρ -> let ac = acomm(a, ρ);  ac - tr(ac)*ρ end
 
 """
     expect(ρ, op)
@@ -111,9 +111,9 @@ inn(a)  = ρ -> let ac = acomm(a, ρ);  ac - trace(ac)*ρ end
 Expectation value of `op` in state `ρ`.
 
 ### Returns:
-  - trace(ρ * op) / trace(ρ)
+  - tr(ρ * op) / tr(ρ)
 """
-expect(ρ, op) = trace(ρ * op) / trace(ρ)
+expect(ρ, op) = tr(ρ * op) / tr(ρ)
 
 """
     expectvec(ψ, op)
@@ -132,9 +132,9 @@ Generalized weak value of `op` with initial state `ρi`
 and final state `ρf`.
 
 ### Returns:
-  - trace(ρf * op * ρi) / trace(ρf * ρi)
+  - tr(ρf * op * ρi) / tr(ρf * ρi)
 """
-weakvalue(ρi, ρf, op) = trace(ρf * op * ρi) / trace(ρf * ρi)
+weakvalue(ρi, ρf, op) = tr(ρf * op * ρi) / tr(ρf * ρi)
 
 """
     weakvaluevec(ψi, ψf, op)
