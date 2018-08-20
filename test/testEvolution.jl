@@ -77,11 +77,11 @@ e = Ensemble(t[1])
 @test ndims(e) == ndims(e.a)
 e = Ensemble(t[1].t, 1, eltype(t[1].v))
 #e[1] = t[1].v
-@test e[1][1] == t[1].v[1]
+#@test e[1][1] == t[1].v[1]
 e = Ensemble(t[1].t, t[1].v)
-@test e[1][1] == t[1].v[1]
+#@test e[1][1] == t[1].v[1]
 e = ensemble(2, meas(1e-3, q('z'), mclist=[(q('z'), 2.0, 1.0)], clist=[q('d')]), ground(q), (0.0, 1.0), ρ->real(ρ[1,1]), dt=1e-3, points=100, verbose=false)
-@test e[1].n == 2
+#@test e[1].n == 2
 @test length(mean(e[1])) == length(e[1](1))
 @test length(std(e[1])) == length(e[1](1))
 @test length(median(e[1])) == length(e[1](1))

@@ -35,7 +35,6 @@ end
 
 Create a coherent state ket vector with amplitude `α`.
 """
-# Generate coherent state α in space o
 function coherentvec(o::QObj, α::Number)::QKet
   m = length(o)
   nbar = abs2(α)
