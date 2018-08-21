@@ -469,10 +469,10 @@ stochastic, optionally store the simulated readouts as well.
     if verbose
         pinit = inc(first(tspan), init)
         N = Int(fld(abs(last(tspan)-first(tspan)), dt))
-        info("Trajectories: ",n,", steps each: ",N,
+        @info("Trajectories: ",n,", steps each: ",N,
              ", points each: ",min(N,points),", values each = ", length(fs))
         readout && typeof(pinit) <: Tuple &&
-            info("Readouts: values each = ", length(pinit)-1)
+            @info("Readouts: values each = ", length(pinit)-1)
     end
 
     inittime=time()
@@ -490,7 +490,7 @@ stochastic, optionally store the simulated readouts as well.
     # Info if desired
     if verbose
         steps = length(first(out))
-        info("Time elapsed: ",elapsed," s, Steps: ",steps,
+        @info("Time elapsed: ",elapsed," s, Steps: ",steps,
              ", Steps per second: ",steps/elapsed)
     end
     out
@@ -545,8 +545,8 @@ function simulate(inc::Function, init,
     end
 
     # Seed loop
-    verbose && info("Trajectory: steps = ",N-1,", points = ",Ns,", values = ",Nf)
-    verbose && readout && Nr > 0 && info("Readout: values = ",Nr)
+    verbose && @info("Trajectory: steps = ",N-1,", points = ",Ns,", values = ",Nf)
+    verbose && readout && Nr > 0 && @info("Readout: values = ",Nr)
     inittime = time()
     now = init
     tnow = t0
@@ -563,6 +563,6 @@ function simulate(inc::Function, init,
     end
     elapsed = time() - inittime
     # Performance summary
-    verbose && info("Time elapsed: ",elapsed," s, Steps per second: ",(N-1)/elapsed)
+    verbose && @info("Time elapsed: ",elapsed," s, Steps per second: ",(N-1)/elapsed)
     traj
 end
