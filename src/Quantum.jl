@@ -98,7 +98,7 @@ end
 function show(io::IO, q::QObj)
     println(io, "$(typeof(q)): ", name(q))
     println(io, "Dims  : ", size(q))
-    println(io, "Ops   : \"", join(keys(q.ops), "\", \""), '"')
+    println(io, "Ops   : '", join(keys(q.ops), "', '"), "'")
 end
 
 ###

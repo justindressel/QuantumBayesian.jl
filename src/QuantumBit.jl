@@ -14,8 +14,8 @@ when constructing a qubit Hamiltonian.
 **Example:**
 ```julia
 q = qubit()
-q("z") * groundvec(q) == sparse([QComp(-1); 0])  # True
-H = (ħ*ωq/2)*q("z") # Correct energy structure
+q('z') * groundvec(q) == sparse([QComp(-1); 0])  # True
+H = (ħ*ωq/2)*q('z') # Correct energy structure
 ```
 
 ### Default ops for QFactor:
