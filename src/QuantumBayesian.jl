@@ -4,6 +4,7 @@ module QuantumBayesian
     using Interpolations
     using Distributed
     import Base: length, size, ndims, map
+    import Statistics: mean, std, median
 
     #################################
     # Abstract types and type aliases
@@ -418,7 +419,6 @@ module QuantumBayesian
         as = QOp[]
         afs = Function[]
         for (m, τ, η) in mclist
-            println(readout)
             push!(ros, readout(dt, m, τ))
             push!(gks, gausskraus(dt, m, τ))
             # For inefficient measurements append to Lindblad dephasing
@@ -439,9 +439,9 @@ module QuantumBayesian
         # Increment that samples each readout, applies all Kraus operators
         # then applies Lindblad dephasing (including Hamiltonian evolution)
         (t::Time, ρ) -> let rs = map(ro -> ro(t, ρ), ros),
-                            gs = map(z -> z[2](t, z[1]), zip(rs,gks)),
-                            ρ1 = foldr(sand, gs; init=ρ);
-                        (l(t, ρ1/tr(ρ1)), rs...) end
+                        gs = map(z -> z[2](t, z[1]), zip(rs,gks)),
+                        ρ1 = foldr(sand, gs; init=ρ);
+                    (l(t, ρ1/tr(ρ1)), rs...) end
     end
 
     """
@@ -452,15 +452,15 @@ module QuantumBayesian
     number that is Gaussian-distributed about the mean ⟨(m + m')/2⟩ with standard
     deviation σ = sqrt(τ/dt). ```m``` may be a function of time t that returns a QOp.
     """
-    function readout(dt::Time, m::QOp, τ::Time)
-        mo = (m .+ m')/2
-        σ = sqrt(τ/dt)
-        (t::Time, ρ) -> σ*randn() + real(expect(ρ, mo))
-    end
     function readout(dt::Time, m::Function, τ::Time)
         σ = sqrt(τ/dt)
         (t::Time, ρ) -> let mo = (m(t) .+ m(t)')/2;
                             σ*randn() + real(expect(ρ, mo)) end
+    end
+    function readout(dt::Time, m, τ::Time)
+        mo = (m .+ m')/2
+        σ = sqrt(τ/dt)
+        (t::Time, ρ) -> σ*randn() + real(expect(ρ, mo))
     end
 
     """
@@ -557,7 +557,8 @@ module QuantumBayesian
         # Simulate and collect data
         # Uses pmap to optionally support parallelization
         fn = _ -> simulate(inc, init, tspan, fs..., dt=dt, points=points, verbose=false, readout=readout)
-        s = hcat(pmap(fn, 1:n)...)
+        wp = CachingPool(workers())
+        s = hcat(pmap(fn, wp, 1:n)...)
         elapsed = time() - inittime
 
         # Return ensemble of each stored value
